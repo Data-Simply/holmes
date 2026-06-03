@@ -1,0 +1,481 @@
+\begin{thebibliography}{67}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Anand et~al.(2020)Anand, Wang, Loog, and van Gemert]{Anand2020BlackMI}
+K.~Anand, Z.~Wang, M.~Loog, and J.~van Gemert.
+\newblock Black magic in deep learning: How human skill impacts network
+  training.
+\newblock In \emph{31st British Machine Vision Conference 2020, {BMVC} 2020,
+  Virtual Event, UK, September 7-10, 2020}. {BMVA} Press, 2020.
+
+\bibitem[Anastacio \& Hoos(2020)Anastacio and Hoos]{AnastacioH20}
+M.~Anastacio and H.~Hoos.
+\newblock Combining sequential model-based algorithm configuration with
+  default-guided probabilistic sampling.
+\newblock In \emph{{GECCO} '20: Genetic and Evolutionary Computation
+  Conference, Companion Volume, Canc{\'{u}}n, Mexico, July 8-12, 2020}, pp.\
+  301--302. {ACM}, 2020.
+
+\bibitem[Arganda-Carreras et~al.(2015)Arganda-Carreras, Turaga, Berger,
+  Cireşan, Giusti, Gambardella, Schmidhuber, Laptev, Dwivedi, Buhmann, Liu,
+  Seyedhosseini, Tasdizen, Kamentsky, Burget, Uher, Tan, Sun, Pham, Bas,
+  Uzunbas, Cardona, Schindelin, and Seung]{unetdata1}
+I.~Arganda-Carreras, S.C. Turaga, D.R. Berger, D.~Cireşan, A.~Giusti, L.M.
+  Gambardella, J.~Schmidhuber, D.~Laptev, S.~Dwivedi, J.M. Buhmann, T.~Liu,
+  M.~Seyedhosseini, T.~Tasdizen, L.~Kamentsky, R.~Burget, V.~Uher, X.~Tan,
+  C.~Sun, T.D. Pham, E.~Bas, M.G. Uzunbas, A.~Cardona, J.~Schindelin, and H.S.
+  Seung.
+\newblock Crowdsourcing the creation of image segmentation algorithms for
+  connectomics.
+\newblock \emph{Frontiers in Neuroanatomy}, 9:\penalty0 142, 2015.
+
+\bibitem[Balandat et~al.(2020)Balandat, Karrer, Jiang, Daulton, Letham, Wilson,
+  and Bakshy]{balandat2020botorch}
+M.~Balandat, B.~Karrer, D.~R. Jiang, S.~Daulton, B.~Letham, A.~G. Wilson, and
+  E.~Bakshy.
+\newblock Botorch: A framework for efficient monte-carlo bayesian optimization.
+\newblock In \emph{Advances in Neural Information Processing Systems}, 2020.
+
+\bibitem[Bergstra \& Bengio(2012)Bergstra and Bengio]{JMLR:v13:bergstra12a}
+J.~Bergstra and Y.~Bengio.
+\newblock Random search for hyper-parameter optimization.
+\newblock \emph{Journal of Machine Learning Research}, 13\penalty0
+  (10):\penalty0 281--305, 2012.
+
+\bibitem[Bergstra et~al.(2011)Bergstra, Bardenet, Bengio, and
+  K{\'e}gl]{bergstra-nips11a}
+J.~Bergstra, R.~Bardenet, Y.~Bengio, and B.~K{\'e}gl.
+\newblock Algorithms for hyper-parameter optimization.
+\newblock In J.~Shawe-Taylor, R.~Zemel, P.~Bartlett, F.~Pereira, and
+  K.~Weinberger (eds.), \emph{Proceedings of the 25th International Conference
+  on Advances in Neural Information Processing Systems ({N}eur{IPS}'11)}, pp.\
+  2546--2554, 2011.
+
+\bibitem[Bouthillier \& Varoquaux(2020)Bouthillier and
+  Varoquaux]{bouthillier:survey}
+X.~Bouthillier and G.~Varoquaux.
+\newblock Survey of machine-learning experimental methods at {NeurIPS2019} and
+  {ICLR2020}.
+\newblock Research report, {Inria Saclay Ile de France}, 2020.
+
+\bibitem[Brochu et~al.(2010)Brochu, Cora, and de~Freitas]{brochu-arXiv10a}
+E.~Brochu, V.~Cora, and N.~de~Freitas.
+\newblock A tutorial on {Bayesian} optimization of expensive cost functions,
+  with application to active user modeling and hierarchical reinforcement
+  learning.
+\newblock \emph{arXiv:1012.2599v1 {[cs.LG]}}, 2010.
+
+\bibitem[Bull(2011)]{JMLR:v12:bull11a}
+A.~D. Bull.
+\newblock Convergence rates of efficient global optimization algorithms.
+\newblock \emph{Journal of Machine Learning Research}, 12\penalty0
+  (88):\penalty0 2879--2904, 2011.
+
+\bibitem[Calandra et~al.(2014)Calandra, Gopalan, Seyfarth, Peters, and
+  Deisenroth]{calandra-lion14a}
+R.~Calandra, N.~Gopalan, A.~Seyfarth, J.~Peters, and M.~Deisenroth.
+\newblock {B}ayesian gait optimization for bipedal locomotion.
+\newblock In P.~Pardalos and M.~Resende (eds.), \emph{Proceedings of the Eighth
+  International Conference on Learning and Intelligent Optimization
+  ({LION}'14)}, 2014.
+
+\bibitem[Cardona et~al.(2010)Cardona, Saalfeld, Preibisch, Schmid, Cheng,
+  Pulokas, Tomancak, and Hartenstein]{unetdata2}
+A.~Cardona, S.~Saalfeld, S.~Preibisch, B.~Schmid, A.~Cheng, J.~Pulokas,
+  P.~Tomancak, and V.~Hartenstein.
+\newblock An integrated micro-and macroarchitectural analysis of the drosophila
+  brain by computer-assisted serial section electron microscopy.
+\newblock \emph{PLoS Biol}, 8\penalty0 (10):\penalty0 e1000502, 2010.
+
+\bibitem[Chen et~al.(2018)Chen, Huang, Wang, Antonoglou, Schrittwieser, Silver,
+  and Freitas]{Chen2018BayesianOI}
+Y.~Chen, A.~Huang, Z.~Wang, I.~Antonoglou, J.~Schrittwieser, D.~Silver, and
+  N.~D. Freitas.
+\newblock Bayesian optimization in alphago.
+\newblock \emph{ArXiv}, abs/1812.06855, 2018.
+
+\bibitem[Deng et~al.(2009)Deng, Dong, Socher, Li, Li, and
+  Fei-Fei]{deng2009imagenet}
+J.~Deng, W.~Dong, R.~Socher, L.-J. Li, K.~Li, and L.~Fei-Fei.
+\newblock Imagenet: A large-scale hierarchical image database.
+\newblock In \emph{2009 IEEE Conference on Computer Vision and Pattern
+  Recognition}, pp.\  248--255, 2009.
+
+\bibitem[Eggensperger et~al.(2021)Eggensperger, Müller, Mallik, Feurer, Sass,
+  Klein, Awad, Lindauer, and Hutter]{eggensperger2021hpobench}
+K.~Eggensperger, P.~Müller, N.~Mallik, M.~Feurer, R.~Sass, A.~Klein, N.~Awad,
+  M.~Lindauer, and F.~Hutter.
+\newblock {HPOBench:} a collection of reproducible multi-fidelity benchmark
+  problems for {HPO}, 2021.
+
+\bibitem[Feurer et~al.(2015)Feurer, Springenberg, and
+  Hutter]{Feurer2015InitializingBH}
+M.~Feurer, Jost~Tobias Springenberg, and F.~Hutter.
+\newblock Initializing bayesian hyperparameter optimization via meta-learning.
+\newblock In \emph{Proceedings of the Twenty-Ninth {AAAI} Conference on
+  Artificial Intelligence}, pp.\  1128--1135, 2015.
+
+\bibitem[Feurer et~al.(2018)Feurer, Letham, Hutter, and
+  Bakshy]{feurer2018practical}
+M.~Feurer, B.~Letham, F.~Hutter, and E.~Bakshy.
+\newblock Practical transfer learning for bayesian optimization.
+\newblock \emph{ArXiv abs/1802.02219}, 2018.
+
+\bibitem[Frazier et~al.(2008)Frazier, Powell, and Dayanik]{kg}
+P.~Frazier, W.~Powell, and S.~Dayanik.
+\newblock A knowledge-gradient policy for sequential information collection.
+\newblock \emph{SIAM J. Control and Optimization}, 47:\penalty0 2410--2439, 01
+  2008.
+
+\bibitem[Hennig \& Schuler(2012)Hennig and Schuler]{entropysearch}
+P.~Hennig and C.~J. Schuler.
+\newblock Entropy search for information-efficient global optimization.
+\newblock \emph{Journal of Machine Learning Research}, 13\penalty0
+  (1):\penalty0 1809–1837, 2012.
+
+\bibitem[Hern\'{a}ndez-Lobato et~al.(2014)Hern\'{a}ndez-Lobato, Hoffman, and
+  Ghahramani]{pes}
+J.~M. Hern\'{a}ndez-Lobato, M.~W. Hoffman, and Z.~Ghahramani.
+\newblock Predictive entropy search for efficient global optimization of
+  black-box functions.
+\newblock In \emph{Advances in Neural Information Processing Systems}, 2014.
+
+\bibitem[Howard(2019)]{imagenette}
+J.~Howard.
+\newblock Imagenette.
+\newblock \url{https://github.com/fastai/imagenette/}, 2019.
+
+\bibitem[Howard et~al.(2018)]{howard2018fastai}
+J.~Howard et~al.
+\newblock fastai.
+\newblock \url{https://github.com/fastai/fastai}, 2018.
+
+\bibitem[Hutter et~al.(2011)Hutter, Hoos, and Leyton-Brown]{smac}
+F.~Hutter, H.~Hoos, and K.~Leyton-Brown.
+\newblock Sequential model-based optimization for general algorithm
+  configuration.
+\newblock In \emph{Learning and Intelligent Optimization}, pp.\  507--523,
+  2011.
+
+\bibitem[Jones et~al.(1998)Jones, Schonlau, and Welch]{jonesei}
+D.~Jones, M.~Schonlau, and W.~Welch.
+\newblock Efficient global optimization of expensive black-box functions.
+\newblock \emph{Journal of Global Optimization}, 13:\penalty0 455--492, 12
+  1998.
+
+\bibitem[Jones(2001)]{jones2001taxonomy}
+D.~R. Jones.
+\newblock A taxonomy of global optimization methods based on response surfaces.
+\newblock \emph{Journal of global optimization}, 21\penalty0 (4):\penalty0
+  345--383, 2001.
+
+\bibitem[Kandasamy et~al.(2020)Kandasamy, Vysyaraju, Neiswanger, Paria,
+  Collins, Schneider, Poczos, and Xing]{Dragonfly}
+K.~Kandasamy, K.~R. Vysyaraju, W.~Neiswanger, B.~Paria, C.~R. Collins,
+  J.~Schneider, B.~Poczos, and E.~P. Xing.
+\newblock Tuning hyperparameters without grad students: Scalable and robust
+  bayesian optimisation with dragonfly.
+\newblock \emph{Journal of Machine Learning Research}, 21\penalty0
+  (81):\penalty0 1--27, 2020.
+
+\bibitem[Kingma \& Ba(2015)Kingma and Ba]{kingma2014adam}
+D.~Kingma and J.~Ba.
+\newblock Adam: {A} method for stochastic optimization.
+\newblock In Yoshua Bengio and Yann LeCun (eds.), \emph{3rd International
+  Conference on Learning Representations, {ICLR}}, 2015.
+
+\bibitem[Klein et~al.(2019)Klein, Dai, Hutter, Lawrence, and Gonzalez]{profet}
+A.~Klein, Z.~Dai, F.~Hutter, N.~Lawrence, and J.~Gonzalez.
+\newblock Meta-surrogate benchmarking for hyperparameter optimization.
+\newblock In \emph{Advances in Neural Information Processing Systems},
+  volume~32, 2019.
+
+\bibitem[Kushner(1964)]{pi}
+H.~J. Kushner.
+\newblock {A New Method of Locating the Maximum Point of an Arbitrary Multipeak
+  Curve in the Presence of Noise}.
+\newblock \emph{Journal of Basic Engineering}, 86\penalty0 (1):\penalty0
+  97--106, 03 1964.
+
+\bibitem[Lacoste et~al.(2019)Lacoste, Luccioni, Schmidt, and
+  Dandres]{lacoste2019quantifying}
+A.~Lacoste, A.~Luccioni, V.~Schmidt, and T.~Dandres.
+\newblock Quantifying the carbon emissions of machine learning.
+\newblock \emph{arXiv preprint arXiv:1910.09700}, 2019.
+
+\bibitem[Lee et~al.(2020)Lee, Perrone, Archambeau, and
+  Seeger]{lee2020costaware}
+Eric~Hans Lee, Valerio Perrone, Cedric Archambeau, and Matthias Seeger.
+\newblock Cost-aware bayesian optimization, 2020.
+
+\bibitem[Li et~al.(2018)Li, Rana, Gupta, Nguyen, Venkatesh, Sutti, R.~de Celis,
+  Slezak, Height, Mohammed, and Gibson]{liaccelerating}
+C.~Li, S.~Rana, S.~Gupta, V.~Nguyen, S.~Venkatesh, A.~Sutti, D.~R.~de Celis,
+  T.~Slezak, M.~Height, M.~Mohammed, and I.~Gibson.
+\newblock Accelerating experimental design by incorporating experimenter
+  hunches.
+\newblock In \emph{{IEEE} International Conference on Data Mining, {ICDM}},
+  pp.\  257--266. {IEEE} Computer Society, 2018.
+
+\bibitem[Li et~al.(2020)Li, Gupta, Rana, Nguyen, Robles-Kelly, and
+  Venkatesh]{Li2020IncorporatingEP}
+C.~Li, S.~Gupta, S.~Rana, V.~Nguyen, A.~Robles-Kelly, and S.~Venkatesh.
+\newblock Incorporating expert prior knowledge into experimental design via
+  posterior sampling.
+\newblock \emph{ArXiv}, abs/2002.11256, 2020.
+
+\bibitem[Lindauer et~al.(2021)Lindauer, Eggensperger, Feurer, Biedenkapp, Deng,
+  Benjamins, Sass, and Hutter]{lindauer-arxiv21a}
+M.~Lindauer, K.~Eggensperger, M.~Feurer, A.~Biedenkapp, D.~Deng, C.~Benjamins,
+  R.~Sass, and F.~Hutter.
+\newblock {SMAC3:} {A} versatile bayesian optimization package for
+  hyperparameter optimization.
+\newblock \emph{CoRR}, abs/2109.09831, 2021.
+
+\bibitem[L{\'o}pez-Ib{\'a}{\~n}ez et~al.(2016)L{\'o}pez-Ib{\'a}{\~n}ez,
+  Dubois-Lacoste, {P. C{\'a}ceres}, St{\"u}tzle, and Birattari]{lopez2016irace}
+M.~L{\'o}pez-Ib{\'a}{\~n}ez, J.~Dubois-Lacoste, L.~{P. C{\'a}ceres},
+  T.~St{\"u}tzle, and M.~Birattari.
+\newblock The {iRace} package: Iterated racing for automatic algorithm
+  configuration.
+\newblock \emph{Operations Research Perspectives}, 3:\penalty0 43--58, 2016.
+
+\bibitem[Mat{\'e}rn(1960)]{matern1960spatial}
+B.~Mat{\'e}rn.
+\newblock Spatial variation.
+\newblock \emph{Meddelanden fran Statens Skogsforskningsinstitut}, 1960.
+
+\bibitem[Mockus et~al.(1978)Mockus, Tiesis, and Zilinskas]{Mockus1978}
+J.~Mockus, V.~Tiesis, and A.~Zilinskas.
+\newblock The application of {B}ayesian methods for seeking the extremum.
+\newblock \emph{Towards Global Optimization}, 2\penalty0 (117-129):\penalty0 2,
+  1978.
+
+\bibitem[Nardi et~al.(2019)Nardi, Koeplinger, and Olukotun]{nardi2019practical}
+L.~Nardi, D.~Koeplinger, and K.~Olukotun.
+\newblock Practical design space exploration.
+\newblock In \emph{2019 IEEE 27th International Symposium on Modeling,
+  Analysis, and Simulation of Computer and Telecommunication Systems
+  (MASCOTS)}, pp.\  347--358. IEEE, 2019.
+
+\bibitem[Oh et~al.(2018)Oh, Gavves, and Welling]{oh2018bock}
+C.~Oh, E.~Gavves, and M.~Welling.
+\newblock {BOCK} : Bayesian optimization with cylindrical kernels.
+\newblock In \emph{International Conference on Machine Learning}, pp.\
+  3865--3874, 2018.
+
+\bibitem[Paleyes et~al.(2019)Paleyes, Pullin, Mahsereci, Lawrence, and
+  González]{emukit2019}
+Andrei Paleyes, Mark Pullin, Maren Mahsereci, Neil Lawrence, and Javier
+  González.
+\newblock Emulation of physical processes with emukit.
+\newblock In \emph{Second Workshop on Machine Learning and the Physical
+  Sciences, NeurIPS}, 2019.
+
+\bibitem[Perrone et~al.(2019)Perrone, Shen, Seeger, Archambeau, and
+  Jenatton]{Perrone2019LearningSS}
+V.~Perrone, H.~Shen, M.~Seeger, C.~Archambeau, and R.~Jenatton.
+\newblock Learning search spaces for bayesian optimization: Another view of
+  hyperparameter transfer learning.
+\newblock In \emph{Advances in Neural Information Processing Systems}, 2019.
+
+\bibitem[Przemek et~al.()]{nvidiaexamples}
+S.~Przemek et~al.
+\newblock Nvidia deep learning examples.
+\newblock \url{https://github.com/NVIDIA/DeepLearningExamples}.
+
+\bibitem[Ramachandran et~al.(2020)Ramachandran, Gupta, Rana, Li, and
+  Venkatesh]{RAMACHANDRAN2020105663}
+A.~Ramachandran, S.~Gupta, S.~Rana, C.~Li, and S.~Venkatesh.
+\newblock Incorporating expert prior in bayesian optimisation via space
+  warping.
+\newblock \emph{Knowledge-Based Systems}, 195:\penalty0 105663, 2020.
+
+\bibitem[Rasmussen \& Williams(2006)Rasmussen and Williams]{rasmussen-book06a}
+C.~Rasmussen and C.~Williams.
+\newblock \emph{Gaussian Processes for Machine Learning}.
+\newblock The MIT Press, 2006.
+
+\bibitem[Ronneberger et~al.(2015)Ronneberger, Fischer, and Brox]{ronne2015unet}
+O.~Ronneberger, P.~Fischer, and T.~Brox.
+\newblock U-net: Convolutional networks for biomedical image segmentation.
+\newblock In \emph{Medical Image Computing and Computer-Assisted Intervention -
+  {MICCAI}}, volume 9351 of \emph{Lecture Notes in Computer Science}, pp.\
+  234--241. Springer, 2015.
+
+\bibitem[Ru et~al.(2021)Ru, Wan, Dong, and Osborne]{ru2021interpretable}
+B.~Ru, X.~Wan, X.~Dong, and M.~Osborne.
+\newblock Interpretable neural architecture search via bayesian optimisation
+  with weisfeiler-lehman kernels.
+\newblock In \emph{International Conference on Learning Representations}, 2021.
+
+\bibitem[Shahriari et~al.(2016{\natexlab{a}})Shahriari, Bouchard-C{\^o}t{\'e},
+  and Freitas]{shahriari2016unbounded}
+B.~Shahriari, A.~Bouchard-C{\^o}t{\'e}, and N.~Freitas.
+\newblock Unbounded bayesian optimization via regularization.
+\newblock In \emph{Artificial intelligence and statistics}, pp.\  1168--1176,
+  2016{\natexlab{a}}.
+
+\bibitem[Shahriari et~al.(2016{\natexlab{b}})Shahriari, Swersky, Wang, Adams,
+  and de~Freitas]{shahriari-ieee16a}
+B.~Shahriari, K.~Swersky, Z.~Wang, R.~Adams, and N.~de~Freitas.
+\newblock Taking the human out of the loop: {A} review of {B}ayesian
+  optimization.
+\newblock \emph{Proceedings of the {IEEE}}, 104\penalty0 (1):\penalty0
+  148--175, 2016{\natexlab{b}}.
+
+\bibitem[Siivola et~al.(2018)Siivola, Vehtari, Vanhatalo, Gonz{\'a}lez, and
+  Andersen]{siivola2018correcting}
+E.~Siivola, A.~Vehtari, J.~Vanhatalo, J.~Gonz{\'a}lez, and M.~R. Andersen.
+\newblock Correcting boundary over-exploration deficiencies in bayesian
+  optimization with virtual derivative sign observations.
+\newblock In \emph{International Workshop on Machine Learning for Signal
+  Processing}, 2018.
+
+\bibitem[Smith(2018)]{smith2018disciplined}
+L.~Smith.
+\newblock A disciplined approach to neural network hyper-parameters: Part
+  1--learning rate, batch size, momentum, and weight decay.
+\newblock \emph{arXiv preprint arXiv:1803.09820}, 2018.
+
+\bibitem[Snoek et~al.(2012)Snoek, Larochelle, and Adams]{snoek-nips12a}
+J.~Snoek, H.~Larochelle, and R.~Adams.
+\newblock Practical {B}ayesian optimization of machine learning algorithms.
+\newblock In P.~Bartlett, F.~Pereira, C.~Burges, L.~Bottou, and K.~Weinberger
+  (eds.), \emph{Proceedings of the 26th International Conference on Advances in
+  Neural Information Processing Systems ({N}eur{IPS}'12)}, pp.\  2960--2968,
+  2012.
+
+\bibitem[Snoek et~al.(2014)Snoek, Swersky, Zemel, and Adams]{pmlr-v32-snoek14}
+J.~Snoek, K.~Swersky, R.~Zemel, and R.~Adams.
+\newblock Input warping for bayesian optimization of non-stationary functions.
+\newblock In Eric~P. Xing and Tony Jebara (eds.), \emph{Proceedings of the 31st
+  International Conference on Machine Learning}, volume~32 of \emph{Proceedings
+  of Machine Learning Research}, pp.\  1674--1682. PMLR, 22--24 Jun 2014.
+
+\bibitem[Souza et~al.(2021)Souza, Nardi, Oliveira, Olukotun, Lindauer, and
+  Hutter]{souza2021bayesian}
+A.~Souza, L.~Nardi, L.~Oliveira, K.~Olukotun, M.~Lindauer, and F.~Hutter.
+\newblock Bayesian optimization with a prior for the optimum.
+\newblock In \emph{Machine Learning and Knowledge Discovery in Databases.
+  Research Track - European Conference, {ECML} {PKDD} 2021, Bilbao, Spain,
+  September 13-17, 2021, Proceedings, Part {III}}, volume 12977 of
+  \emph{Lecture Notes in Computer Science}, pp.\  265--296. Springer, 2021.
+
+\bibitem[Springenberg et~al.(2016)Springenberg, Klein, Falkner, and
+  Hutter]{springenberg-nips2016}
+J.~Springenberg, A.~Klein, S.~Falkner, and F.~Hutter.
+\newblock Bayesian optimization with robust {B}ayesian neural networks.
+\newblock In D.~Lee, M.~Sugiyama, U.~von Luxburg, I.~Guyon, and R.~Garnett
+  (eds.), \emph{Proceedings of the 30th International Conference on Advances in
+  Neural Information Processing Systems ({N}eur{IPS}'16)}, 2016.
+
+\bibitem[Srinivas et~al.(2012)Srinivas, Krause, Kakade, and
+  Seeger]{Srinivas_2012}
+N.~Srinivas, A.~Krause, S.~M. Kakade, and M.~W. Seeger.
+\newblock Information-theoretic regret bounds for gaussian process optimization
+  in the bandit setting.
+\newblock \emph{IEEE Transactions on Information Theory}, 58\penalty0
+  (5):\penalty0 3250–3265, 2012.
+
+\bibitem[Stoll et~al.(2020)Stoll, Franke, Wagner, Selg, and
+  Hutter]{stoll2020meta}
+D.~Stoll, J.~KH Franke, D.~Wagner, S.~Selg, and F.~Hutter.
+\newblock Hyperparameter transfer across developer adjustments.
+\newblock In \emph{Neur{IP}S 2020 Workshop on Meta-Learning}, 2020.
+
+\bibitem[Swersky et~al.(2013)Swersky, Snoek, and Adams]{swersky-nips13a}
+K.~Swersky, J.~Snoek, and R.~Adams.
+\newblock Multi-task {Bayesian} optimization.
+\newblock In C.~Burges, L.~Bottou, M.~Welling, Z.~Ghahramani, and K.~Weinberger
+  (eds.), \emph{Proceedings of the 27th International Conference on Advances in
+  Neural Information Processing Systems ({N}eur{IPS}'13)}, pp.\  2004--2012,
+  2013.
+
+\bibitem[Swersky(2017)]{swersky2017improving}
+K.~J. Swersky.
+\newblock \emph{Improving Bayesian Optimization for Machine Learning using
+  Expert Priors}.
+\newblock PhD thesis, 2017.
+
+\bibitem[{The~GPyOpt~authors}(2016)]{gpyopt2016}
+{The~GPyOpt~authors}.
+\newblock {GPyOpt}: A bayesian optimization framework in python.
+\newblock \url{http://github.com/SheffieldML/GPyOpt}, 2016.
+
+\bibitem[Thompson(1933)]{thompson1933likelihood}
+W.~Thompson.
+\newblock On the likelihood that one unknown probability exceeds another in
+  view of the evidence of two samples.
+\newblock \emph{Biometrika}, 25\penalty0 (3/4):\penalty0 285--294, 1933.
+
+\bibitem[Turner et~al.(2021)Turner, Eriksson, McCourt, Kiili, Laaksonen, Xu,
+  and Guyon]{pmlr-v133-turner21a}
+R.~Turner, D.~Eriksson, M.~McCourt, J.~Kiili, E.~Laaksonen, Z.~Xu, and
+  I.~Guyon.
+\newblock Bayesian optimization is superior to random search for machine
+  learning hyperparameter tuning: Analysis of the black-box optimization
+  challenge 2020.
+\newblock In Hugo~Jair Escalante and Katja Hofmann (eds.), \emph{Proceedings of
+  the NeurIPS 2020 Competition and Demonstration Track}, volume 133 of
+  \emph{Proceedings of Machine Learning Research}, pp.\  3--26. PMLR, 06--12
+  Dec 2021.
+
+\bibitem[van Rijn \& Hutter(2018)van Rijn and Hutter]{rijn2018importance}
+Jan~N. van Rijn and Frank Hutter.
+\newblock Hyperparameter importance across datasets.
+\newblock In \emph{Proceedings of the 24th ACM SIGKDD International Conference
+  on Knowledge Discovery \& Data Mining}, KDD '18, pp.\  2367–2376, New York,
+  NY, USA, 2018. Association for Computing Machinery.
+\newblock ISBN 9781450355520.
+\newblock \doi{10.1145/3219819.3220058}.
+\newblock URL \url{https://doi.org/10.1145/3219819.3220058}.
+
+\bibitem[Vanschoren(2018)]{vanschoren2018metalearning}
+J.~Vanschoren.
+\newblock Meta-learning: A survey, 2018.
+
+\bibitem[Vanschoren et~al.(2014)Vanschoren, van Rijn, Bischl, and
+  Torgo]{vanschoren-sigkdd13a}
+J.~Vanschoren, J.~van Rijn, B.~Bischl, and L.~Torgo.
+\newblock {OpenML}: Networked science in machine learning.
+\newblock \emph{SIGKDD Explor. Newsl.}, 15\penalty0 (2):\penalty0 49--60, 2014.
+
+\bibitem[Wang et~al.(2019)Wang, Ming, Jin, Shen, Liu, Smith, Veeramachaneni,
+  and Qu]{atmseer}
+Q.~Wang, Y.~Ming, Z.~Jin, Q.~Shen, D.~Liu, M.~J. Smith, K.~Veeramachaneni, and
+  H.~Qu.
+\newblock Atmseer: Increasing transparency and controllability in automated
+  machine learning.
+\newblock In \emph{Proceedings of the 2019 CHI Conference on Human Factors in
+  Computing Systems}, CHI '19, pp.\  1–12. Association for Computing
+  Machinery, 2019.
+
+\bibitem[Wang \& Jegelka(2017)Wang and Jegelka]{wang2018maxvalue}
+Z.~Wang and S.~Jegelka.
+\newblock Max-value entropy search for efficient bayesian optimization.
+\newblock In \emph{Proceedings of the 34th International Conference on Machine
+  Learning, {ICML}}, volume~70 of \emph{Proceedings of Machine Learning
+  Research}, pp.\  3627--3635. {PMLR}, 2017.
+
+\bibitem[Wistuba et~al.(2015)Wistuba, Schilling, and
+  Schmidt{-}Thieme]{wistuba-pkdd15a}
+M.~Wistuba, N.~Schilling, and L.~Schmidt{-}Thieme.
+\newblock Hyperparameter search space pruning - {A} new component for
+  sequential model-based hyperparameter optimization.
+\newblock In A.~Appice, P.~Rodrigues, V.~Costa, J.~Gama, A.~Jorge, and
+  C.~Soares (eds.), \emph{Machine Learning and Knowledge Discovery in Databases
+  ({ECML}/{PKDD}'15)}, volume 9285, pp.\  104--119, 2015.
+
+\bibitem[Zimmer et~al.(2021)Zimmer, Lindauer, and Hutter]{zimmer-tpami21a}
+L.~Zimmer, M.~Lindauer, and F.~Hutter.
+\newblock Auto-pytorch tabular: Multi-fidelity metalearning for efficient and
+  robust autodl.
+\newblock \emph{IEEE Transactions on Pattern Analysis and Machine
+  Intelligence}, 43\penalty0 (9):\penalty0 3079 -- 3090, 2021.
+
+\end{thebibliography}

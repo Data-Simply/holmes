@@ -1,0 +1,92 @@
+
+\section{Theoretical Analysis} \label{sec:theory_full}
+% Kernel of the matern class with smoothness \nu
+We now study the \method method from a theoretical standpoint when paired with the EI acquisition function. 
+To provide convergence rates, we rely on the set of assumptions introduced by Bull \cite{JMLR:v12:bull11a}. 
+These assumptions are satisfied for popular kernels like the Matérn~\cite{matern1960spatial} class and the Gaussian kernel, which is obtained in the limit $\nu \rightarrow \infty$, 
+where the rate $\nu$ controls the smoothness of functions from the GP prior.
+Our theoretical results apply when both length scales ${\bm{\ell}}$ and the global scale of variation $\sigma$ are fixed; these results can then be extended to the case where the kernel hyperparameters are learned using Maximum Likelihood Estimation (MLE) following the same procedure as in Bull \cite{JMLR:v12:bull11a} (Theorem 5).
+We define the loss over the ball $B_R$ for a function $f$ of norm $||f||_{\mathcal{H}_{\bm{\ell}}(\mathcal{X})} \leq R$ in the RKHS $\mathcal{H}_{\bm{\ell}}(\mathcal{X})$ given a symmetric positive-definite kernel $K_{\bm{\ell}}$ as
+\begin{equation} \label{eq:loss}
+    \mathcal{L}_{n}(u, \mathcal{D}_n, \mathcal{H}_{\bm{\ell}}(\mathcal{X}), R) \overset{\Delta}{=} \sup_{{||f||}_{\mathcal{H}_{\bm{\ell}}(\mathcal{X})}\leq R}\mathbb{E}^u_f[f(\bm{x}^*_n) - \min f],
+\end{equation}
+where $n$ is the optimization iteration and $u$ a strategy.
+We focus on the strategy that maximizes \pei{} and show that the loss in \eqref{eq:loss} can, at any iteration $n$, be bounded by the vanilla EI loss function. 
+We refer to $\text{EI}_{\pri, n}$ and $\text{EI}_{n}$ when we want to emphasize the iteration $n$ for the acquisition functions $\text{EI}_{\pri}$ and $\text{EI}$, respectively. 
+\begin{theorem} \label{th1}
+Given $\mathcal{D}_n$, $K_{\bm{\ell}}$, $\pri$, $\sigma$, ${\bm{\ell}}$, $R$ and the compact set $\mathcal{X}\subset\mathbb{R}^d$ as defined above, the loss $\mathcal{L}_{n}$ incurred at iteration $n$ by $\text{EI}_{\pri, n}$
+%when considering the next design point $\bm{x}_{n+1}$ 
+% Given (everything mentioned above) this, this and this that as defined above,  - BR is ball, n is iteration in BO
+can be bounded from above:
+%by the loss incurred by vanilla EI, multiplied by a factor that tends to 1 as $n\rightarrow \infty$:
+\begin{equation}
+    \mathcal{L}_{n}(\text{EI}_{\pri, n}, \mathcal{D}_n, \mathcal{H}_{\bm{\ell}}(\mathcal{X}), R) \leq C_{\pi, n} \mathcal{L}_{n}(\text{EI}_n, \mathcal{D}_n, \mathcal{H}_{\bm{\ell}}(\mathcal{X}), R), \quad C_{\pi, n} = \left(\frac{\max_{\xinx} \pi(\bm{x})}{\min_{\xinx} \pi(\bm{x})}\right)^{\beta/n}.
+\end{equation}
+\end{theorem}  
+
+\begin{proof}
+To bound the performance of \pei{} to that of EI, we primarily need to consider Lemma~7 and Lemma~8 by Bull \cite{JMLR:v12:bull11a}. In Lemma~7, it is stated that for any sequence of points $\{\bm{x}_i\}_{i=1}^n$, $p \in \mathbb{N}$ 
+and kernel length scales ${\bm{\ell}}$, the posterior variance $s^2_n$ 
+on $\bm{x}_{n+1}$ will satisfy the following inequality at most $p$ times, with $p < n$, 
+%can be bounded in the number of times $p$ that the variance exceeds a large value as
+\begin{equation} \label{varbound}
+    s_n(\bm{x}_{n+1}; \bm{\ell}) \geq Cp^{-(\nu \land 1)/d}(\log p)^\gamma), \quad \gamma = \begin{cases}
+		\alpha, & \nu \leq 1\\
+        0, & \nu > 1
+	\end{cases}
+\end{equation}
+%In other words, Lemma~7 says that \eqref{varbound} can only happen for $p$ of the $n$ total $x_i$. 
+Thus, we can bound the posterior variance by assuming a point in time $n_p$ where Eq. \ref{varbound} has held $p$ times. 
+We now consider Lemma 8 where, through a number of inequalities, EI is bounded by the actual improvement $I_n$
+\begin{equation}
+    \max\left(I_n-Rs, \frac{\tau(-R/\sigma)}{\tau(R/\sigma)}I_n   \right) \leq \eixn \leq I_n + (R + \sigma)s,
+\end{equation}
+where $I_n = (f(\bm{x}^*_n) - f(\bm{x}))^+$, $\tau(z) = z\Phi(z) + \phi(z)$ and $s = s_n(\bm{x}_{n}; \bm{\ell})$. Since \method reweights $\text{EI}_n$ by $\pri_n$, these bounds need adjustment to hold for $\text{EI}_{\pi, n}$. 
+For the upper bound provided in Lemma~8, we make use of $\max_{\xinx} \pri_n(\bm{x})$ to bound $\peixn$ %to $\eixn$ 
+for any point $\xinx$: 
+\begin{equation}
+    \frac{\peixn} {\max_{\xinx} \pri_n(\bm{x})} = \frac{\eixn \pri_n(\bm{x})} {\max_{\xinx}\pri_n(\bm{x})} \leq \eixn \leq I_n + (R + \sigma)s.
+\end{equation}
+For the lower bounds, we instead rely on $\min_{\xinx} \pri_n(\bm{x})$ in a similar manner:
+\begin{equation}
+    \max\left(I_n-Rs, \frac{\tau(-R/\sigma)}{\tau(R/\sigma)}I_n   \right) \leq \eixn \leq \frac{\eixn \pri_n(\bm{x})} {\min_{\xinx}\pri_n(\bm{x})}  = \frac{\peixn} {\min_{\xinx} \pri_n(\bm{x})}.
+\end{equation}
+Consequently, \pei{} can be bounded by the actual improvement as
+\begin{equation}
+    {\min_{\xinx}\pri_n(\bm{x})}\max\left(I_n-Rs, \frac{\tau(-R/\sigma)}{\tau(R/\sigma)}I_n\right) \leq \peixn \leq {\max_{\xinx}\pri_n(\bm{x})} (I_n + (R + \sigma)s). 
+\end{equation}
+With these bounds in place, we consider the setting as in the proof for Theorem 2 in Bull \cite{JMLR:v12:bull11a}, which proves an upper bound for the EI strategy in the fixed kernel parameters setting. 
+At an iteration $n_p, p \leq n_p \leq 3p$, the posterior variance will be bounded by $Cp^{-(\nu \land 1)/d}(\log p)^\gamma$. Furthermore, since $I_n \geq 0$ and $||f||_{\mathcal{H}_\ell(\mathcal{X}))} \leq R$, we can bound the total improvement as
+\begin{equation}
+    \sum_i I_i \leq \sum_i f(\bm{x}^*_{i}) - f(\bm{x}^*_{i+1}) \leq f(\bm{x}^*_1) - \min f \leq 2||f||_\infty \leq 2R,
+\end{equation}
+leaving us a maximum of $p$ times that $I_n \geq 2Rp^{-1}$. Consequently, both the posterior variance $s^2_{n_p}$ and the improvement $I_{n_p}$ are bounded at $n_p$. For a future iteration $n,\; 3p \leq n \leq 3(p+1)$, we use the  bounds on \pei, $s_{n_p}$ and $I_{n_p}$ to obtain the bounds on the loss on \pei{}:
+\begin{equation} \label{eq:bound_loss}
+\begin{split}
+    &\mathcal{L}_{n}(\text{EI}_\pri, \mathcal{D}_n, \mathcal{H}_{\bm{\ell}}(\mathcal{X}), R) \\
+    &= f(\bm{x}_n^*) - \min f \\
+    &\leq  f(\bm{x}_{n_p}^*) - \min f \\
+    &\leq\frac{\text{EI}_{\pi,n_p}(\bm{x}^*)}{\min_{\xinx}\pri_n(\bm{x})}  \frac{\tau (R/\sigma)}{\tau (-R/\sigma)} \\
+    &\leq
+    \frac{\text{EI}_{\pi,n_p}(\bm{x}_{n+1})}{\min_{\xinx}\pri_n(\bm{x})}  \frac{\tau (R/\sigma)}{\tau (-R/\sigma)} \\
+    &\leq\frac{\min_{\xinx}\pri_n(\bm{x})}{\min_{\xinx}\pri_n(\bm{x})}  \frac{\tau (R/\sigma)}{\tau (-R/\sigma)}
+    \left(I_{n_p} + (R+\sigma)s_{n_p}\right)\\
+    &\leq\left(\frac{\max_{\xinx}\pri(\bm{x})}{\min_{\xinx}\pri(\bm{x})}\right)^{\beta/n}  \frac{\tau (R/\sigma)}{\tau (-R/\sigma)} (2Rp^{-1} + (R+\sigma)Cp^{-(\nu \land 1)/d}(\log p)^\gamma),
+\end{split}
+\end{equation}
+where the last inequality in Eq. \ref{eq:bound_loss} is a factor $C_{\pri, n} = \left(\frac{\max_{\xinx}\pri(\bm{x})}{\min_{\xinx}\pri(\bm{x})}\right)^{\beta/n}$ larger than the bound on $\mathcal{L}_n(\text{EI}, \mathcal{D}_n, \mathcal{H}_{\bm{\ell}}(\mathcal{X}), R)$.
+\end{proof} 
+\begin{corollary} The loss of a decaying prior-weighted Expected Improvement strategy, \pei, is asymptotically equal to the loss of an Expected Improvement strategy, EI:
+\begin{equation}
+    \mathcal{L}_{n}(\text{EI}_\pri, \mathcal{D}_n, \mathcal{H}_{\bm{\ell}}(\mathcal{X}), R) \sim  \mathcal{L}_{n}(\text{EI}, \mathcal{D}_n, \mathcal{H}_{\bm{\ell}}(\mathcal{X}), R),
+\end{equation}
+
+so we obtain a convergence rate for \pei{} of $\mathcal{L}_{n}(\text{EI}_\pri, \mathcal{D}_n, \mathcal{H}_{\bm{\ell}}(\mathcal{X}), R) = \mathcal{O}(n^{-(\nu \land 1)/d}(\log n)^\gamma)$.
+\end{corollary}
+\begin{proof}
+For Corollary 1, we simply compute the fraction of the losses in the limit,
+\begin{equation}
+    \lim_{n \to \infty}\frac{\mathcal{L}_n(\text{EI}_\pi, \mathcal{D}_n, \mathcal{H}_{\bm{\ell}}(\mathcal{X}), R)}{\mathcal{L}_n(\text{EI}, \mathcal{D}_n, \mathcal{H}_{\bm{\ell}}(\mathcal{X}), R)} \le \lim_{n \to \infty} \left(\frac{\max_{\xinx}\pri(\bm{x})}{\min_{\xinx}\pri(\bm{x})}\right)^{\beta/n} =1.
+\end{equation}
+\end{proof}
+Thus, we determine that weighting introduced by \pei{} does not negatively impact the worst-case convergence rate. The short-term performance is controlled by the user in their choice of $\pri(\bm{x})$ and $\beta$. This result is coherent with intuition, as a weaker prior or quicker decay will yield a short-term performance closer to that of EI. On the contrary, a stronger prior or slower decay is not guaranteed the same short-term performance, but can produce better empirical results, as shown in our experiments in Section~\ref{results}.

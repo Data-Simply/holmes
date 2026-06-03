@@ -1,0 +1,991 @@
+%%%% BO USE CASES %%%%
+% Neural Architecture Search
+% https://github.com/automl/Auto-PyTorch
+  @article{zimmer-tpami21a,
+  author = {L. Zimmer and M. Lindauer and F. Hutter},
+  title = {Auto-PyTorch Tabular: Multi-Fidelity MetaLearning for Efficient and Robust AutoDL},
+  journal = {IEEE Transactions on Pattern Analysis and Machine Intelligence},
+  year = {2021},
+  volume = {43},
+  number = {9},
+  pages = {3079 - 3090}
+}
+
+@misc{lee2020costaware,
+      title={Cost-aware Bayesian Optimization}, 
+      author={Eric Hans Lee and Valerio Perrone and Cedric Archambeau and Matthias Seeger},
+      year={2020},
+      eprint={2003.10870},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG}
+}
+
+@inproceedings{rijn2018importance,
+author = {van Rijn, Jan N. and Hutter, Frank},
+title = {Hyperparameter Importance Across Datasets},
+year = {2018},
+isbn = {9781450355520},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3219819.3220058},
+doi = {10.1145/3219819.3220058},
+abstract = {With the advent of automated machine learning, automated hyperparameter optimization
+methods are by now routinely used in data mining. However, this progress is not yet
+matched by equal progress on automatic analyses that yield information beyond performance-optimizing
+hyperparameter settings. In this work, we aim to answer the following two questions:
+Given an algorithm, what are generally its most important hyperparameters, and what
+are typically good values for these? We present methodology and a framework to answer
+these questions based on meta-learning across many datasets. We apply this methodology
+using the experimental meta-data available on OpenML to determine the most important
+hyperparameters of support vector machines, random forests and Adaboost, and to infer
+priors for all their hyperparameters. The results, obtained fully automatically, provide
+a quantitative basis to focus efforts in both manual algorithm design and in automated
+hyperparameter optimization. The conducted experiments confirm that the hyperparameters
+selected by the proposed method are indeed the most important ones and that the obtained
+priors also lead to statistically significant improvements in hyperparameter optimization.},
+booktitle = {Proceedings of the 24th ACM SIGKDD International Conference on Knowledge Discovery \& Data Mining},
+pages = {2367–2376},
+numpages = {10},
+keywords = {hyperparameter importance, hyperparameter optimization, meta-learning},
+location = {London, United Kingdom},
+series = {KDD '18}
+}
+
+  
+
+
+
+@inproceedings{AnastacioH20,
+  author    = {M. Anastacio and
+               H. Hoos},
+  title     = {Combining sequential model-based algorithm configuration with default-guided
+               probabilistic sampling},
+  booktitle = {{GECCO} '20: Genetic and Evolutionary Computation Conference, Companion
+               Volume, Canc{\'{u}}n, Mexico, July 8-12, 2020},
+  pages     = {301--302},
+  publisher = {{ACM}},
+  year      = {2020},
+}
+
+
+@article{lindauer-arxiv21a,
+  author    = {M. Lindauer and
+               K. Eggensperger and
+               M. Feurer and
+               A. Biedenkapp and
+               D. Deng and
+               C. Benjamins and
+               R. Sass and
+               F. Hutter},
+  title     = {{SMAC3:} {A} Versatile Bayesian Optimization Package for Hyperparameter
+               Optimization},
+  journal   = {CoRR},
+  volume    = {abs/2109.09831},
+  year      = {2021}
+}
+
+Thompson sampling
+@article{thompson1933likelihood,
+ author = {W. Thompson},
+ journal = {Biometrika},
+ number = {3/4},
+ pages = {285--294},
+ publisher = {[Oxford University Press, Biometrika Trust]},
+ title = {On the Likelihood that One Unknown Probability Exceeds Another in View of the Evidence of Two Samples},
+ volume = {25},
+ year = {1933}
+}
+
+%HPOBench
+@misc{eggensperger2021hpobench,
+      title={{HPOBench:} A Collection of Reproducible Multi-Fidelity Benchmark Problems for {HPO}}, 
+      author={K. Eggensperger and P. Müller and N. Mallik and M. Feurer and R. Sass and A. Klein and N. Awad and M. Lindauer and F. Hutter},
+      year={2021},
+      journal={ArXiv, abs/2109.06716},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG}
+}
+%ADAM
+@inproceedings{kingma2014adam,
+  author    = {D. Kingma and
+               J. Ba},
+  editor    = {Yoshua Bengio and
+               Yann LeCun},
+  title     = {Adam: {A} Method for Stochastic Optimization},
+  booktitle = {3rd International Conference on Learning Representations, {ICLR}},
+  year      = {2015},
+}
+
+% BO with input warping
+@InProceedings{pmlr-v32-snoek14,
+  title = 	 {Input Warping for Bayesian Optimization of Non-Stationary Functions},
+  author = 	 {Snoek, J. and Swersky, K. and Zemel, R. and Adams, R.},
+  booktitle = 	 {Proceedings of the 31st International Conference on Machine Learning},
+  pages = 	 {1674--1682},
+  year = 	 {2014},
+  editor = 	 {Xing, Eric P. and Jebara, Tony},
+  volume = 	 {32},
+  number =       {2},
+  series = 	 {Proceedings of Machine Learning Research},
+  month = 	 {22--24 Jun},
+  publisher =    {PMLR},
+}
+
+
+% DL parameter choice convention
+@article{smith2018disciplined,
+  title={A disciplined approach to neural network hyper-parameters: Part 1--learning rate, batch size, momentum, and weight decay},
+  author={Smith, L.},
+  journal={arXiv preprint arXiv:1803.09820},
+  year={2018}
+}
+
+
+% Survey on skill in manual search
+@article{Anand2020BlackMIOLD,
+  title={Black Magic in Deep Learning: How Human Skill Impacts Network Training},
+  author={K. Anand and Z. Wang and M. Loog and J. Gemert},
+  journal={ArXiv},
+  year={2020},
+  volume={abs/2008.05981}
+}
+@inproceedings{Anand2020BlackMI,
+  author    = {K. Anand and
+               Z. Wang and
+               M. Loog and
+               J. van Gemert},
+  title     = {Black Magic in Deep Learning: How Human Skill Impacts Network Training},
+  booktitle = {31st British Machine Vision Conference 2020, {BMVC} 2020, Virtual
+               Event, UK, September 7-10, 2020},
+  publisher = {{BMVA} Press},
+  year      = {2020},
+}
+
+% Random search for HPO
+@article{JMLR:v13:bergstra12a,
+  author  = {J. Bergstra and Y. Bengio},
+  title   = {Random Search for Hyper-Parameter Optimization},
+  journal = {Journal of Machine Learning Research},
+  year    = {2012},
+  volume  = {13},
+  number  = {10},
+  pages   = {281-305},
+}
+
+% BB competition
+@InProceedings{pmlr-v133-turner21a,
+  title = 	 {Bayesian Optimization is Superior to Random Search for Machine Learning Hyperparameter Tuning: Analysis of the Black-Box Optimization Challenge 2020},
+  author =       {Turner, R. and Eriksson, D. and McCourt, M. and Kiili, J. and Laaksonen, E. and Xu, Z. and Guyon, I.},
+  booktitle = 	 {Proceedings of the NeurIPS 2020 Competition and Demonstration Track},
+  pages = 	 {3--26},
+  year = 	 {2021},
+  editor = 	 {Escalante, Hugo Jair and Hofmann, Katja},
+  volume = 	 {133},
+  series = 	 {Proceedings of Machine Learning Research},
+  month = 	 {06--12 Dec},
+  publisher =    {PMLR},
+}
+
+
+% Need more use cases
+@inproceedings{nardi2019practical,
+  title={Practical design space exploration},
+  author={Nardi, L. and Koeplinger, D. and Olukotun, K.},
+  booktitle={2019 IEEE 27th International Symposium on Modeling, Analysis, and Simulation of Computer and Telecommunication Systems (MASCOTS)},
+  pages={347--358},
+  year={2019},
+  organization={IEEE}
+}
+% Spatial
+@inproceedings{10.1145/3192366.3192379,
+author = {Koeplinger, D. and Feldman, M and Prabhakar, R. and Zhang, Y. and Hadjis, S. and Fiszel, R. and Zhao, T. and Nardi, L. and Pedram, A. and Kozyrakis, C. and Olukotun, K.},
+title = {Spatial: A Language and Compiler for Application Accelerators},
+year = {2018},
+abstract = {Industry is increasingly turning to reconfigurable architectures like FPGAs and CGRAs for improved performance and energy efficiency. Unfortunately, adoption of these architectures has been limited by their programming models. HDLs lack abstractions for productivity and are difficult to target from higher level languages. HLS tools are more productive, but offer an ad-hoc mix of software and hardware abstractions which make performance optimizations difficult.  In this work, we describe a new domain-specific language and compiler called Spatial for higher level descriptions of application accelerators. We describe Spatial's hardware-centric abstractions for both programmer productivity and design performance, and summarize the compiler passes required to support these abstractions, including pipeline scheduling, automatic memory banking, and automated design tuning driven by active machine learning. We demonstrate the language's ability to target FPGAs and CGRAs from common source code. We show that applications written in Spatial are, on average, 42\% shorter and achieve a mean speedup of 2.9x over SDAccel HLS when targeting a Xilinx UltraScale+ VU9P FPGA on an Amazon EC2 F1 instance.},
+booktitle = {Proceedings of the 39th ACM SIGPLAN Conference on Programming Language Design and Implementation},
+}
+% removed to homogeneous
+% publisher = {Association for Computing Machinery},
+% address = {New York, NY, USA},
+% url = {https://doi.org/10.1145/3192366.3192379},
+% doi = {10.1145/3188366.3192379},
+% pages = {296–311},
+% numpages = {16},
+% keywords = {CGRAs, compilers, FPGAs, hardware accelerators, domain-specific languages, reconfigurable architectures, high-level synthesis},
+% location = {Philadelphia, PA, USA},
+% series = {PLDI 2018}
+% isbn = {9781450356985},
+
+% Chem engineering ex
+@Article{chem,
+author ="Griffiths, R.-R. and Hernández-Lobato, J. M.",
+title  ="Constrained Bayesian optimization for automatic chemical design using variational autoencoders",
+journal  ="Chem. Sci.",
+year  ="2020",
+volume  ="11",
+issue  ="2",
+pages  ="577-586",
+publisher  ="The Royal Society of Chemistry",}
+
+% Spatial
+@article{spatial,
+author = {Koeplinger, D. and Feldman, M. and Prabhakar, R. and Zhang, Y. and Hadjis, S. and Fiszel, R. and Zhao, T. and Nardi, L. and Pedram, A. and Kozyrakis, C. and Olukotun, K.},
+title = {Spatial: A Language and Compiler for Application Accelerators},
+year = {2018},
+publisher = {Association for Computing Machinery},
+volume = {53},
+number = {4},
+journal = {SIGPLAN Not.},
+pages = {296–311},
+numpages = {16},
+}
+
+  
+
+
+
+%Computer vision
+@inproceedings{vision,
+author = {Nardi, L. and Bodin, B. and Saeedi, S. and Vespa, E. and Davison, A. and Kelly, P.},
+year = {2017},
+month = {05},
+pages = {},
+title = {Algorithmic Performance-Accuracy Trade-off in 3D Vision Applications Using HyperMapper},
+}
+%
+
+% Expert prior refs from BOPro
+@inproceedings{atmseer,
+author = {Wang, Q. and Ming, Y. and Jin, Z. and Shen, Q. and Liu, D. and Smith, M. J. and Veeramachaneni, K. and Qu, H.},
+title = {ATMSeer: Increasing Transparency and Controllability in Automated Machine Learning},
+year = {2019},
+publisher = {Association for Computing Machinery},
+booktitle = {Proceedings of the 2019 CHI Conference on Human Factors in Computing Systems},
+pages = {1–12},
+numpages = {12},
+series = {CHI '19}
+}
+
+@misc{vanschoren2018metalearning,
+      title={Meta-Learning: A Survey}, 
+      author={Vanschoren, J.},
+      year={2018},
+      eprint={1810.03548},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG}
+}
+
+% Survey
+@techreport{bouthillier:survey,
+  TITLE = {Survey of machine-learning experimental methods at {NeurIPS2019} and {ICLR2020}},
+  AUTHOR = {Bouthillier, X. and Varoquaux, G.},
+  TYPE = {Research Report},
+  INSTITUTION = {{Inria Saclay Ile de France}},
+  YEAR = {2020},
+  PDF = {https://hal.archives-ouvertes.fr/hal-02447823/file/ml_methods_survey.pdf},
+  HAL_ID = {hal-02447823},
+  HAL_VERSION = {v1},
+}
+%removed info
+ %AUTHOR = {Bouthillier, Xavier and Varoquaux, Ga{\"e}l},
+
+% AlphaGO
+@article{Chen2018BayesianOI,
+  title={Bayesian Optimization in AlphaGo},
+  author={Y. Chen and A. Huang and Z. Wang and I. Antonoglou and J. Schrittwieser and D. Silver and N. D. Freitas},
+  journal={ArXiv},
+  year={2018},
+  volume={abs/1812.06855}
+}
+
+% Automated ML
+@inproceedings{feurer_autosklearn,
+title = {Efficient and Robust Automated Machine Learning},
+author = {Feurer, M. and Klein, A. and Eggensperger, K. and Springenberg, J. and Blum, M. and Hutter, F.},
+booktitle = {Advances in Neural Information Processing Systems},
+year = {2015},
+}
+% removed
+editor = {C. Cortes and N. D. Lawrence and D. D. Lee and M. Sugiyama and R. Garnett},
+pages = {2962--2970},
+publisher = {Curran Associates, Inc.},
+
+% simultaneous location and mapping (SLAM)
+@inproceedings{bodin2016integrating,
+title={Integrating algorithmic parameters into benchmarking and design space exploration in 3D scene understanding},
+author={Bodin, Bruno and Nardi, Luigi and Zia, M Zeeshan and Wagstaff, Harry and Sreekar Shenoy, Govind and Emani, Murali and Mawer, John and Kotselidis, Christos and Nisbet, Andy and Lujan, Mikel and others},
+booktitle={Proceedings of the 2016 International Conference on Parallel Architectures and Compilation},
+pages={57--69},
+year={2016},
+}
+
+% object detection
+@inproceedings{zhang2015improving,
+  title={Improving object detection with deep convolutional networks via bayesian optimization and structured prediction},
+  author={Zhang, Yuting and Sohn, Kihyuk and Villegas, Ruben and Pan, Gang and Lee, Honglak},
+  booktitle={Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition},
+  pages={249--258},
+  year={2015}
+}
+
+%%%% FRAMEWORKS %%%%
+
+% Hypermapper
+@article{hmapper,
+  author    = {Luigi Nardi and
+               David Koeplinger and
+               Kunle Olukotun},
+  title     = {Practical Design Space Exploration},
+  journal   = {CoRR},
+  volume    = {abs/1810.05236},
+  year      = {2018},
+}
+
+% GPyOpt
+@Misc{gpyopt2016,
+author = {{The~GPyOpt~authors}},
+title = {{GPyOpt}: A Bayesian Optimization framework in python},
+howpublished = {\url{http://github.com/SheffieldML/GPyOpt}},
+year = {2016}
+}
+
+% Dragonfly
+@article{Dragonfly,
+  author  = {K. Kandasamy and K. R. Vysyaraju and W. Neiswanger and B. Paria and C. R. Collins and J. Schneider and B. Poczos and E. P. Xing},
+  title   = {Tuning Hyperparameters without Grad Students: Scalable and Robust Bayesian Optimisation with Dragonfly},
+  journal = {Journal of Machine Learning Research},
+  year    = {2020},
+  volume  = {21},
+  number  = {81},
+  pages   = {1-27},
+}
+
+% Vizier
+@inproceedings{golovin2017google,
+  title={Google vizier: A service for black-box optimization},
+  author={Golovin, Daniel and Solnik, Benjamin and Moitra, Subhodeep and Kochanski, Greg and Karro, John and Sculley, D},
+  booktitle={Proceedings of the 23rd ACM SIGKDD international conference on knowledge discovery and data mining},
+  pages={1487--1495},
+  year={2017}
+}
+
+% BOTorch
+@inproceedings{balandat2020botorch,
+  title={BoTorch: A Framework for Efficient Monte-Carlo Bayesian Optimization},
+  author={Balandat, M. and Karrer, B. and Jiang, D. R. and Daulton, S. and Letham, B. and Wilson, A. G. and Bakshy, E.},
+  booktitle = {Advances in Neural Information Processing Systems},
+  year={2020},
+}
+% removed info
+%author={Balandat, Maximilian and Karrer, Brian and Jiang, Daniel R. and Daulton, Samuel and Letham, Benjamin and Wilson, Andrew Gordon and Bakshy, Eytan},
+
+% Spearmint
+@inproceedings{spearmint,
+author = {Snoek, J. and Larochelle, H. and Adams, R. P.},
+title = {Practical Bayesian Optimization of Machine Learning Algorithms},
+year = {2012},
+pages = {2951–2959},
+numpages = {9},
+booktitle = {NeurIPS}
+}
+
+% Profet
+@inproceedings{profet,
+ author = {Klein, A. and Dai, Z. and Hutter, F. and Lawrence, N. and Gonzalez, J.},
+ booktitle = {Advances in Neural Information Processing Systems},
+  title = {Meta-Surrogate Benchmarking for Hyperparameter Optimization},
+ volume = {32},
+ year = {2019}
+}
+%editor = {H. Wallach and H. Larochelle and A. Beygelzimer and F. d\textquotesingle Alch\'{e}-Buc and E. Fox and R. Garnett},
+ %pages = {},
+ %publisher = {Curran Associates, Inc.},
+
+%KG
+@article{kg,
+author = {Frazier, P. and Powell, W. and Dayanik, S.},
+year = {2008},
+month = {01},
+pages = {2410-2439},
+title = {A Knowledge-Gradient Policy for Sequential Information Collection},
+volume = {47},
+journal = {SIAM J. Control and Optimization},
+}
+
+% PI
+@article{pi,
+    author = {Kushner, H. J.},
+    title = "{A New Method of Locating the Maximum Point of an Arbitrary Multipeak Curve in the Presence of Noise}",
+    journal = {Journal of Basic Engineering},
+    volume = {86},
+    number = {1},
+    pages = {97-106},
+    year = {1964},
+    month = {03},
+}
+
+
+
+
+% TL for BO
+@inproceedings{tlbo,
+ author = {Perrone, V. and Jenatton, R. and Seeger, M. W. and Archambeau, C.},
+ booktitle = {Advances in Neural Information Processing Systems},
+ title = {Scalable Hyperparameter Transfer Learning},
+ year = {2018}
+}
+% homogeneizing
+%  editor = {S. Bengio and H. Wallach and H. Larochelle and K. Grauman and N. Cesa-Bianchi and R. Garnett},
+%  pages = {},
+%  publisher = {Curran Associates, Inc.},
+%   url = {https://proceedings.neurips.cc/paper/2018/file/14c879f3f5d8ed93a09f6090d77c2cc3-Paper.pdf},
+%  volume = {31},
+
+% Warm-starting BO
+@INPROCEEDINGS{warmstart,
+
+  author={Poloczek, Matthias and Wang, Jialei and Frazier, Peter I.},
+
+  booktitle={2016 Winter Simulation Conference (WSC)}, 
+
+  title={Warm starting Bayesian optimization}, 
+
+  year={2016},
+
+  volume={},
+
+  number={},
+
+  pages={770-781},
+
+  }
+
+
+%NAS
+@inproceedings{
+ru2021interpretable,
+title={Interpretable Neural Architecture Search via Bayesian Optimisation with Weisfeiler-Lehman Kernels},
+author={B. Ru and X. Wan and X. Dong and M. Osborne},
+booktitle={International Conference on Learning Representations},
+year={2021},
+}
+
+% SMAC
+@InProceedings{smac,
+author="Hutter, F.
+and Hoos, H.
+and Leyton-Brown, K.",
+title="Sequential Model-Based Optimization for General Algorithm Configuration",
+booktitle="Learning and Intelligent Optimization",
+year="2011",
+pages     = {507--523},
+}
+% removed info to make uniform
+%address="Berlin, Heidelberg",
+%pages="507--523"
+%publisher="Springer Berlin Heidelberg",
+%editor="Coello, Carlos A. Coello",
+
+% TPE - include for Artur's
+% https://hal.inria.fr/hal-00642998/ 
+@inproceedings{bergstra2011algorithms,
+  title={Algorithms for hyper-parameter optimization},
+  author={Bergstra, J. and Bardenet, R. and Bengio, Y. and K{\'e}gl, B.},
+  booktitle={Advances in Neural Information Processing Systems},
+  year={2011},
+}
+% removed info
+%author={Bergstra, James and Bardenet, R{\'e}mi and Bengio, Yoshua and K{\'e}gl, Bal{\'a}zs},
+
+% iRace
+% https://www.sciencedirect.com/science/article/pii/S2214716015300270
+@article{lopez2016irace,
+  author = { M. L{\'o}pez-Ib{\'a}{\~n}ez  and  J. Dubois-Lacoste  and  L. {P. C{\'a}ceres}  and  T. St{\"u}tzle  and  M. Birattari },
+  title = {The {iRace} package: Iterated Racing for Automatic  Algorithm Configuration},
+  journal = {Operations Research Perspectives},
+  year = 2016,
+  volume = 3,
+  pages = {43--58}
+}
+
+% BOHB
+% used in broader impact section
+@inproceedings{falknerKH18,
+  author    = {S. Falkner and
+               A. Klein and
+               F. Hutter},
+  title     = {{BOHB:} Robust and Efficient Hyperparameter Optimization at Scale},
+  booktitle = {International Conference on Machine Learning},
+  pages     = {1436--1445},
+  year      = {2018},
+}
+
+%%%% PRIOR INFUSION %%%%
+
+% Initializing BO with meta learning - include the sources named in this one too
+% 
+@inproceedings{Feurer2015InitializingBH,
+  title={Initializing Bayesian Hyperparameter Optimization via Meta-Learning},
+  author={M. Feurer and Jost Tobias Springenberg and F. Hutter},
+    booktitle = {Proceedings of the Twenty-Ninth {AAAI} Conference on Artificial Intelligence},
+  pages     = {1128--1135},
+  year={2015}
+}
+
+% Speeding up BO by prior knowledge - selecting initial points with prior knowledge
+% https://ieeexplore.ieee.org/document/6639346
+@INPROCEEDINGS{improvingdeep,
+  author={Dahl, George E. and Sainath, Tara N. and Hinton, Geoffrey E.},
+  booktitle={2013 IEEE International Conference on Acoustics, Speech and Signal Processing}, 
+  title={Improving deep neural networks for LVCSR using rectified linear units and dropout}, 
+  year={2013},
+  volume={},
+  number={},
+  pages={8609-8613},
+}
+
+% Shrink space based on previous optima
+% https://www.semanticscholar.org/paper/Learning-search-spaces-for-Bayesian-optimization%3A-Perrone-Shen/f349824dbbe0aba95dc1581c81f8ba0b210fea52
+@inproceedings{Perrone2019LearningSS,
+  title={Learning search spaces for Bayesian optimization: Another view of hyperparameter transfer learning},
+  author={V. Perrone and H. Shen and M. Seeger and C. Archambeau and R. Jenatton},
+  booktitle={Advances in Neural Information Processing Systems},
+  year={2019}
+}
+
+% Hyperparameter transfer across datasets
+% https://arxiv.org/abs/1710.04725
+@article{van_Rijn_2018,
+   title={Hyperparameter Importance Across Datasets},
+   journal={Proceedings of the 24th ACM SIGKDD International Conference on Knowledge Discovery & Data Mining},
+   publisher={ACM},
+   author={van Rijn, Jan N. and Hutter, Frank},
+   year={2018},
+}
+
+% Swersky Thesis
+% https://tspace.library.utoronto.ca/bitstream/1807/79505/3/Swersky_Kevin_J_201706_PhD_thesis.pdf
+@phdthesis{swersky2017improving,
+  title={Improving Bayesian Optimization for Machine Learning using Expert Priors},
+  author={Swersky, K. J.},
+  year={2017}
+}
+
+%%%% RELATED WORKS %%%%
+
+% BoPro
+% https://arxiv.org/abs/2006.14608
+@misc{souza2021bayesianOLD,
+      title={Bayesian Optimization with a Prior for the Optimum}, 
+      author={A. Souza and L. Nardi and L. B. Oliveira and K. Olukotun and M. Lindauer and F. Hutter},
+      year={2021},
+      eprint={2006.14608},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG}
+}
+@inproceedings{souza2021bayesian,
+  author    = {A. Souza and
+               L. Nardi and
+               L. Oliveira and
+               K. Olukotun and
+               M. Lindauer and
+               F. Hutter},
+  title     = {Bayesian Optimization with a Prior for the Optimum},
+  booktitle = {Machine Learning and Knowledge Discovery in Databases. Research Track
+               - European Conference, {ECML} {PKDD} 2021, Bilbao, Spain, September
+               13-17, 2021, Proceedings, Part {III}},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {12977},
+  pages     = {265--296},
+  publisher = {Springer},
+  year      = {2021},
+}
+
+% Input warping
+% https://www.sciencedirect.com/science/article/pii/S0950705120301088
+@article{RAMACHANDRAN2020105663,
+    title = {Incorporating expert prior in Bayesian optimisation via space warping},
+    journal = {Knowledge-Based Systems},
+    volume = {195},
+    pages = {105663},
+    year = {2020},
+    author = {A. Ramachandran and S. Gupta and S. Rana and C. Li and S. Venkatesh},
+}
+
+% Experiment hunches
+% https://www.researchgate.net/publication/327259583_Accelerating_Experimental_Design_by_Incorporating_Experimenter_Hunches
+@inproceedings{liaccelerating,
+    author = {Li, C. and Rana, S. and Gupta, S. and Nguyen, V. and Venkatesh, S. and Sutti, A. and R. de Celis, D. and Slezak, T. and Height, M. and Mohammed, M. and Gibson, I.},
+    year = {2018},
+    title = {Accelerating Experimental Design by Incorporating Experimenter Hunches},
+    booktitle = {{IEEE} International Conference on Data Mining, {ICDM}},
+    pages     = {257--266},
+    publisher = {{IEEE} Computer Society},
+}
+
+% Posterior Thompson sampling
+% https://arxiv.org/abs/2002.11256
+@article{Li2020IncorporatingEP,
+  title={Incorporating Expert Prior Knowledge into Experimental Design via Posterior Sampling},
+  author={C. Li and S. Gupta and S. Rana and V. Nguyen and A. Robles-Kelly and S. Venkatesh},
+  journal={ArXiv},
+  year={2020},
+  volume={abs/2002.11256}
+}
+
+% Cylindrical kernels for high dimension BO
+% https://arxiv.org/pdf/1806.01619.pdf
+@inproceedings{oh2018bock,
+  author    = {C. Oh and
+               E. Gavves and
+               M. Welling},
+  title     = {{BOCK} : Bayesian Optimization with Cylindrical Kernels},
+  booktitle = {International Conference on Machine Learning},
+  year      = {2018},
+  pages     = {3865--3874},
+}
+
+% derivatives for high dimension BO
+% https://arxiv.org/abs/1704.00963
+@inproceedings{siivola2018correcting,
+  title={Correcting boundary over-exploration deficiencies in Bayesian optimization with virtual derivative sign observations},
+  author={Siivola, E. and Vehtari, A. and Vanhatalo, J. and Gonz{\'a}lez, J. and Andersen, M. R.},
+  booktitle={International Workshop on Machine Learning for Signal Processing},
+  year={2018},
+}
+
+% Unbounded search spaces
+% http://proceedings.mlr.press/v51/shahriari16.html
+@inproceedings{shahriari2016unbounded,
+  title={Unbounded Bayesian optimization via regularization},
+  author={Shahriari, B. and Bouchard-C{\^o}t{\'e}, A. and Freitas, N.},
+  booktitle={Artificial intelligence and statistics},
+  pages={1168--1176},
+  year={2016}
+}
+
+
+%%%% BO Theory %%%%
+% BO - Mockus
+% https://bibbase.org/network/publication/mockus-tiesis-zilinskas-theapplicationofbayesianmethodsforseekingtheextremum-1978
+@Article{Mockus1978,
+  author       = {Mockus, J. and Tiesis, V. and Zilinskas, A.},
+  title        = {The Application of {B}ayesian Methods for Seeking the Extremum},
+  volume       = {2},
+  number       = {117-129},
+  pages        = {2},
+  year         = {1978},
+  journal = {Towards Global Optimization},
+  publisher    = {Amsterdam: Elsevier},
+}
+
+% GP - Rasmussen
+@book{10.5555/1162254,
+    author = {Rasmussen, Carl Edward and Williams, Christopher K. I.},
+    title = {Gaussian Processes for Machine Learning (Adaptive Computation and Machine Learning)},
+    year = {2005},
+    isbn = {026218253X},
+    publisher = {The MIT Press}
+}
+
+% Tutorial on BO
+% https://arxiv.org/pdf/1807.02811.pdf%C2%A0#cite.ScottFrazierPowell2011
+@article{frazier2018tutorial,
+  title={A tutorial on Bayesian optimization},
+  author={Frazier, P. I.},
+  journal={arXiv preprint arXiv:1807.02811},
+  year={2018}
+}
+
+%
+
+%
+
+%%%% ACQUISITION FUNCTIONS %%%%
+
+% General about acquisition functions?
+
+% Bull EI
+@article{JMLR:v12:bull11a,
+  author  = {A. D. Bull},
+  title   = {Convergence Rates of Efficient Global Optimization Algorithms},
+  journal = {Journal of Machine Learning Research},
+  year    = {2011},
+  volume  = {12},
+  number  = {88},
+  pages   = {2879-2904},
+}
+
+% Srinivas UCB
+@article{Srinivas_2012,
+   title={Information-Theoretic Regret Bounds for Gaussian Process Optimization in the Bandit Setting},
+   volume={58},
+   number={5},
+   journal={IEEE Transactions on Information Theory},
+   publisher={Institute of Electrical and Electronics Engineers (IEEE)},
+   author={Srinivas, N. and Krause, A. and Kakade, S. M. and Seeger, M. W.},
+   year={2012},
+   pages={3250–3265}
+}
+
+
+% Jones EI
+@article{jonesei,
+author = {Jones, D. and Schonlau, M. and Welch, W.},
+year = {1998},
+month = {12},
+pages = {455-492},
+title = {Efficient Global Optimization of Expensive Black-Box Functions},
+volume = {13},
+journal = {Journal of Global Optimization},
+}
+
+@article{jones2001taxonomy,
+  title={A taxonomy of global optimization methods based on response surfaces},
+  author={Jones, D. R.},
+  journal={Journal of global optimization},
+  volume={21},
+  number={4},
+  pages={345--383},
+  year={2001},
+  publisher={Springer}
+}
+
+%%%% MODEL RELATED %%%%
+
+% Constrained BO
+% https://www.researchgate.net/publication/271195338_Bayesian_Optimization_with_Inequality_Constraints/citation/download
+@inproceedings{inproceedings,
+author = {Gardner, Jacob and Kusner, Matt and Xu, Eddie and Weinberger, Kilian and Cunningham, John},
+year = {2014},
+month = {06},
+pages = {},
+title = {Bayesian Optimization with Inequality Constraints},
+volume = {3},
+journal = {31st International Conference on Machine Learning, ICML 2014}
+}
+% EMUKIT
+
+@inproceedings{emukit,
+  title={Emulation of physical processes with Emukit},
+  author={A. Paleyes and M. Pullin and M. Mahsereci},
+  year={2019}
+}
+
+
+
+@incollection{vanschoren2019meta,
+  title={Meta-learning},
+  author={Vanschoren, J.},
+  pages={35--61},
+    editor = {F. Hutter and L. Kotthoff and J. Vanschoren},
+    note = {Available for free at http://automl.org/book},
+    publisher = {Springer},
+    title = {Automated Machine Learning: Methods, Systems, Challenges},
+    booktitle = {Automated Machine Learning: Methods, Systems, Challenges},
+    year = {2019}
+}
+
+@inproceedings{stoll2020meta,
+  title={Hyperparameter Transfer Across Developer Adjustments},
+  author={Stoll, D. and Franke, J. KH and Wagner, D. and Selg, S. and Hutter, F.},
+  booktitle = {Neur{IP}S 2020 Workshop on Meta-Learning},
+  year={2020}
+}
+@inproceedings{wistuba2016two,
+  title={Two-stage transfer surrogate model for automatic hyperparameter optimization},
+  author={Wistuba, Martin and Schilling, Nicolas and Schmidt-Thieme, Lars},
+  booktitle={Joint European conference on machine learning and knowledge discovery in databases},
+  pages={199--214},
+  year={2016},
+  organization={Springer}
+}
+
+@article{feurer2018practical,
+    title={Practical Transfer Learning for Bayesian Optimization},
+    author={M. Feurer and B. Letham and F. Hutter and E. Bakshy},
+    year={2018},
+    journal={ArXiv abs/1802.02219},
+    archivePrefix={arXiv},
+    primaryClass={stat.ML},
+}
+
+@article{pfisterer2021learning,
+      title={Learning Multiple Defaults for Machine Learning Algorithms}, 
+      author={Florian Pfisterer and Jan N. van Rijn and Philipp Probst and Andreas Müller and Bernd Bischl},
+      year={2021},
+      journal={ArXiv abs/1811.09409},
+      archivePrefix={arXiv},
+      primaryClass={stat.ML}
+}
+
+% ARD citation 
+@book{neal2012bayesian,
+  title={Bayesian Learning for Neural Networks},
+  author={Neal, R.M.},
+  series={Lecture Notes in Statistics},
+  year={2012},
+  publisher={Springer New York}
+}
+
+% Entropy Search
+@article{entropysearch,
+author = {Hennig, P. and Schuler, C. J.},
+title = {Entropy Search for Information-Efficient Global Optimization},
+year = {2012},
+issue_date = {2012},
+publisher = {JMLR.org},
+volume = {13},
+number = {1},
+journal = {Journal of Machine Learning Research},
+pages = {1809–1837},
+numpages = {29},
+}
+
+% PES
+@inproceedings{pes,
+ author = {Hern\'{a}ndez-Lobato, J. M. and Hoffman, M. W. and Ghahramani, Z.},
+ booktitle = {Advances in Neural Information Processing Systems},
+  title = {Predictive Entropy Search for Efficient Global Optimization of Black-box Functions},
+ year = {2014}
+}
+% removed to make homogeneous
+%editor = {Z. Ghahramani and M. Welling and C. Cortes and N. Lawrence and K. Q. Weinberger},
+% pages = {},
+ %publisher = {Curran Associates, Inc.},
+ %volume = {27},
+
+% Thompson Sampling
+
+@InProceedings{thompson,
+author="Kaufmann, E.
+and Korda, N.
+and Munos, R.",
+title="Thompson Sampling: An Asymptotically Optimal Finite-Time Analysis",
+booktitle="Algorithmic Learning Theory",
+year="2012",
+abstract="The question of the optimality of Thompson Sampling for solving the stochastic multi-armed bandit problem had been open since 1933. In this paper we answer it positively for the case of Bernoulli rewards by providing the first finite-time analysis that matches the asymptotic rate given in the Lai and Robbins lower bound for the cumulative regret. The proof is accompanied by a numerical comparison with other optimal policies, experiments that have been lacking in the literature until now for the Bernoulli case.",
+isbn="978-3-642-34106-9"
+}
+
+%Emukit
+@inproceedings{emukit2019,
+      author = {Paleyes, Andrei and Pullin, Mark and Mahsereci, Maren and Lawrence, Neil and González, Javier},
+      title = {Emulation of physical processes with Emukit},
+      booktitle = {Second Workshop on Machine Learning and the Physical Sciences, NeurIPS},
+      year = {2019}
+}
+% removed info to make homogeneous
+% editor="Bshouty, Nader H. and Stoltz, Gilles and Vayatis, Nicolas and Zeugmann, Thomas",
+%publisher="Springer Berlin Heidelberg",
+%address="Berlin, Heidelberg",
+%pages="199--213",
+
+
+@misc{wang2018maxvalueOLD,
+      title={Max-value Entropy Search for Efficient Bayesian Optimization}, 
+      author={Z. Wang and S. Jegelka},
+      year={2018},
+      eprint={1703.01968},
+      archivePrefix={arXiv},
+      primaryClass={stat.ML}
+}
+@inproceedings{wang2018maxvalue,
+  author    = {Z. Wang and
+               S. Jegelka},
+  title     = {Max-value Entropy Search for Efficient Bayesian Optimization},
+  booktitle = {Proceedings of the 34th International Conference on Machine Learning,
+               {ICML}},
+  series    = {Proceedings of Machine Learning Research},
+  volume    = {70},
+  pages     = {3627--3635},
+  publisher = {{PMLR}},
+  year      = {2017},
+}
+
+
+%Imagenet
+@INPROCEEDINGS{deng2009imagenet,
+  author={Deng, J. and Dong, W. and Socher, R. and Li, L.-J. and K. Li and L. Fei-Fei},
+  booktitle={2009 IEEE Conference on Computer Vision and Pattern Recognition}, 
+  title={ImageNet: A large-scale hierarchical image database}, 
+  year={2009},
+  volume={},
+  number={},
+  pages={248-255},
+}  
+  %
+  @misc{howard2018fastai,
+  title={fastai},
+  author={Howard, J. and others},
+  year={2018},
+  publisher={GitHub},
+  howpublished={\url{https://github.com/fastai/fastai}},
+}
+
+%U-Net
+@inproceedings{ronne2015unetOLD,
+author = {Ronneberger, O. and Fischer, P. and Brox, T.},
+year = {2015},
+month = {10},
+pages = {234-241},
+title = {U-Net: Convolutional Networks for Biomedical Image Segmentation},
+volume = {9351},
+journal = {LNCS},
+}
+@inproceedings{ronne2015unet,
+  author    = {O. Ronneberger and
+               P. Fischer and
+               T. Brox},
+  title     = {U-Net: Convolutional Networks for Biomedical Image Segmentation},
+  booktitle = {Medical Image Computing and Computer-Assisted Intervention - {MICCAI}},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {9351},
+  pages     = {234--241},
+  publisher = {Springer},
+  year      = {2015},
+}
+
+@misc{imagenette,
+    author    = "Howard, J.",
+    title     = "ImageNette",
+     year={2019},
+    publisher={GitHub},
+    howpublished       = {\url{https://github.com/fastai/imagenette/}}
+}
+
+@misc{nvidiaexamples,
+    author    = "Przemek, S. and others",
+    title     = "NVIDIA Deep Learning Examples",
+    publisher={GitHub},
+    howpublished       = {\url{https://github.com/NVIDIA/DeepLearningExamples}}
+}
+
+
+@ARTICLE{unetdata1,
+AUTHOR={I. Arganda-Carreras and S.C. Turaga and D.R. Berger and D. Cireşan and A. Giusti and L.M. Gambardella and J. Schmidhuber and D. Laptev and S. Dwivedi and J.M. Buhmann and T. Liu and M. Seyedhosseini and T. Tasdizen and L. Kamentsky and R. Burget and V. Uher and X. Tan and C. Sun and T.D. Pham and E. Bas and M.G. Uzunbas and A. Cardona and J. Schindelin and H.S. Seung},   
+TITLE={Crowdsourcing the creation of image segmentation algorithms for connectomics},      
+JOURNAL={Frontiers in Neuroanatomy},      
+VOLUME={9},      
+PAGES={142},     
+YEAR={2015},      
+}
+
+@article{unetdata2,
+  title={An integrated micro-and macroarchitectural analysis of the Drosophila brain by computer-assisted serial section electron microscopy},
+  author={A. Cardona and S. Saalfeld and S. Preibisch and B. Schmid and A. Cheng and J. Pulokas and P. Tomancak and V. Hartenstein},
+  journal={PLoS Biol},
+  volume={8},
+  number={10},
+  pages={e1000502},
+  year={2010},
+  publisher={Public Library of Science}
+}
+
+
+@article{lacoste2019quantifying,
+  title={Quantifying the Carbon Emissions of Machine Learning},
+  author={A. Lacoste and A. Luccioni and V. Schmidt and T. Dandres},
+  journal={arXiv preprint arXiv:1910.09700},
+  year={2019}
+}

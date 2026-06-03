@@ -1,0 +1,62 @@
+% Proof sketch
+\textit{Proof sketch (for the full proof, see Appendix \ref{sec:appendix_proof}):} 
+To bound the performance of \pei{} to that of EI, we need to establish three bounds: an upper bound on the posterior variance $s_n^2$, and a lower and upper bound on \pei{} in relation to the actual improvement  $I_n$ at iteration $n$. 
+
+\textbf{Upper Bound on Variance}\quad
+Lemma 7 in \citet{JMLR:v12:bull11a} provides an upper bound on the variance that depends on $\mathcal{X}$,$K_{\bm{\ell}}$, $\sigma$ and ${\bm{\ell}}$, but not on the strategy $u$. Specifically, for any sequence of points $\{\bm{x}_i\}_{i=1}^n$, $p \in \mathbb{N}$, the posterior variance $s^2_n$ 
+will be ``large'' at most $p$ times, which holds for any $p\in \mathbb{N}$. 
+%\frank{I don't fully understand the previous sentence. Should we put ``large'' in quotes, as we cannot fully define it here?}
+Thus, the required bound on the variance is unaffected by choosing \pei{} as our strategy.
+%\carl{this requires quite a bit to properly specify, so I just went with large - I guess we can hgo with quotes.}
+
+\textbf{Improvement-related Bounds}\quad
+Lemma 8 in \citet{JMLR:v12:bull11a} bounds EI by the actual improvement $I$ as
+\begin{equation}
+    \max\left(I_n-Rs, \frac{\tau(-R/\sigma)}{\tau(R/\sigma)}I_n   \right) \leq \eixn \leq I_n + (R + \sigma)s.
+\end{equation}
+Moreover, we can bound \pei{} to EI accordingly:
+\begin{equation}
+    {\min_{\xinx}\pri_n(\bm{x})}\eixn \leq \peixn \leq {\max_{\xinx}\pri_n(\bm{x})}\eixn.
+\end{equation}
+Combining these bounds yields a bound on \pei{} to $I$ as
+\begin{equation} \label{eq:newbound}
+    {\min_{\xinx}\pri_n(\bm{x})}\max\left(I_n-Rs, \frac{\tau(-R/\sigma)}{\tau(R/\sigma)}I_n\right) \leq \peixn \leq {\max_{\xinx}\pri_n(\bm{x})} (I_n + (R + \sigma)s), 
+\end{equation}
+which gives us an improvement-related bound wider than that of EI, but converging towards it for a decaying prior. With these bounds in place, we consider an iteration $n_p$ when $I_{n_p}$ and $s_{n_p}$ are both upper bounded, and use the inequality in \eqref{eq:newbound}. Then, for all future iterations $n$, we obtain the factor $C_{n, \pri}$ governing the loss $\mathcal{L}_{n}(\text{EI}_\pri, \mathcal{D}_n, \mathcal{H}_{\bm{\ell}}(\mathcal{X}), R)$ relative $\mathcal{L}_{n}(\text{EI}, \mathcal{D}_n, \mathcal{H}_{\bm{\ell}}(\mathcal{X}), R)$. \hfill$\square$ 
+%\frank{Is the last line a typo? The second-last term and the last term appear to be identical?}
+
+
+
+
+
+\section{Limitations} \label{sec:limitations}
+ \textbf{Performance Claims and Prior Assessment} \quad
+ When assessing approaches relying on user beliefs, priors are naturally required to assess the effectiveness of the approach. Moreover, different prior qualities should be used to address high-end performance as well as robustness. In Section \ref{results}, we construct priors of simple design, to reflect general types of prior quality. However, the quality of a prior is ultimately arbitrary, both in the synthetic and real-world setting. We attempt to alleviate this issue by relying on quantitative methods and default settings chosen by experts for our priors.
+ 
+ \textbf{Dependence on Supporting Framework}\quad
+While one of \method's main strengths is its cross-framework flexibility, its performance is also reliant on the effectiveness of that supporting BO framework. This makes \method difficult to evaluate by itself. While \method's theoretical properties makes it fundamentally robust, its empirical performance and benefits from the prior will likely vary between frameworks. 
+ 
+  \textbf{Acquisition Function Restrictions}\quad
+We propose the use of \method with a collection of acquisition functions which all select design points through myopic criteria. However, \method should not be used with non-myopic functions, as neither the fundamental purposes nor the selection procedures of these acquisition functions are well-aligned with \method. While we do believe that \method could be extended to this setting, the approach will ultimately have to be modified in order to make this feasible.
+
+\section{Broader Impact} \label{sec:impact}
+
+Our work proposes a novel BO approach that combines users' prior knowledge about the location of the optimum with BO's acquisition function. The approach is foundational and thus will not bring direct societal or ethical consequences. However, \method will likely be used in the development of applications for a wide range of areas and thus indirectly contribute to their impacts on society. In particular, we envision that \method will impact a multitude of fields by allowing ML experts to inject their knowledge about the location of the optimum into BO. We recall that only a small fraction of recent ML research has used BO for hyperparameter tuning, as practitioners have often favored manual tuning~\cite{bouthillier:survey}. \method has the potential to bridge this gap and increase the adoption of BO, helping experts fine-tune solutions faster and better. 
+
+%We envision that our work will have a deep indirect impact in society. For instance, Bayesian Optimization has been used in conjunction with environmental monitoring~\citep{marchant2012bayesian}, which could improve how we protect natural resources and help quickly detect and prevent environmental disasters. Bayesian Optimization has also been used in computer vision~\citep{nardi2017algorithmic}, where it could lead to positive breakthroughs, such as improved medical imaging systems, or controversial developments, such as improved public surveillance. 
+
+We also envision that \method will have an impact in the democratization of ML. Currently, ML models require expert knowledge in order to fine-tune models and achieve good performance in new applications. The effectiveness of BO in AutoML~\cite{feurer_autosklearn, vanschoren2019meta} and hyperparameter tuning~\cite{spearmint, falknerKH18} has already been demonstrated. We believe \method will bolster this impact. Though non-ML experts may not have priors of their own, they still can leverage the priors established by experts through defaults. In the future, we envision that experts might even provide defaults for these priors together with public implementations of their new algorithms. %For instance, they might leverage the public image dataset priors proposed by~\citet{navruzyan19fastai}.
+
+We intend for \method to be a tool that allows users to assist BO by providing reasonable prior knowledge and beliefs. This process induces user bias into the optimization, as \method will inevitably start by optimizing around this prior. As some users may only be interested in optimizing in the direct neighborhood of their prior, \method{} could allow them to do so if provided with a high $\beta$ value in relation to the number of iterations. Thus, if improperly specified, \method could serve to reinforce user's beliefs by providing improved solutions only for the user's region of interest. 
+
+Finally, the demonstrated speedup of \method has the potential of reducing the amount of BO iterations required in order to yield sufficient model performance, assuming prior knowledge is available on the task at hand. As a consequence, model tuning can be done in less time and with less energy usage, making \method a useful tool for reducing carbon emissions related to model training.
+
+%\method impacts not only the performance of applications, but also makes the development of new applications more accessible. By automating design decisions, Bayesian Optimization alleviates the expertise required to design and fine-tune new applications. For instance, Bayesian Optimization can be used for tuning ML hyperparameters, supporting non-ML experts to apply ML in their applications. This is particularly true for \method, which enables users to inject their current experience into the optimization process. For example in Section~\ref{sec:experiments.spatial}, \method combines the expertise of a \spatial developer into Bayesian Optimization to achieve better performance than Bayesian Optimization or the expert had achieved before separated. However, this could also help the development of new malicious applications.
+
+%Our results with \spatial also directly impacts the hardware design field. We show that \method can be directly integrated with \spatial to lead to better specialized hardware designs. For instance, this compounds with \method's impact on ML by also enabling the development of specialized hardware for ML models~\citep{hadjis2019tensorflow}. Likewise, \method and \spatial enable the design of efficient hardware for cybersecurity primitives for the Internet of Things and Cyber-Physical-Systems, where traditional cybersecurity solutions are too expensive and often impractical~\citep{wu2017new}.
+
+
+%We believe \method has the potential for deep societal impact. In particular, we believe \method will lead to a surge on the number and quality of new applications in a wide range of fields, by automatically optimizing design decisions. As with any other new technology, \method may give rise to both positive and negative new applications. 
+
+%\frank{Optimally, if we have time before submission, it would be good to have consistent references; either all first names written out or not.
+%In our group's bibtex file, we only use abbreviated first names (since for some papers full names are not available).}

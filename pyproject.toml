@@ -1,0 +1,53 @@
+[project]
+name = "agentic-hpo-in-the-loop"
+version = "0.1.0"
+description = "Agentic Hyperparameterization with an Agent in the Loop"
+readme = "README.md"
+authors = [
+    { name = "Murray Vanwyk", email = "murray@datasimply.co" }
+]
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+agentic-hpo-in-the-loop = "agentic_hpo_in_the_loop:main"
+
+[build-system]
+requires = ["uv_build>=0.11.8,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
+    "ruff>=0.6.0",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "D203",    # one-blank-line-before-class (conflicts with D211)
+    "D213",    # multi-line-summary-second-line (conflicts with D212)
+    "COM812",  # trailing-comma-missing (conflicts with formatter)
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = [
+    "S101",    # assert is expected in tests
+    "D",       # docstrings not required in tests
+    "ANN",     # type annotations not required in tests
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=agentic_hpo_in_the_loop"
+
+[tool.coverage.run]
+source = ["src/agentic_hpo_in_the_loop"]

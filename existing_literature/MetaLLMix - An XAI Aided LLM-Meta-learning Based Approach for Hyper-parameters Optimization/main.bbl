@@ -1,0 +1,315 @@
+\begin{thebibliography}{10}
+
+\bibitem{franceschi2024hpo}
+Luca Franceschi, Michele Donini, Valerio Perrone, Aaron Klein, C{\'e}dric
+  Archambeau, Matthias Seeger, Massimiliano Pontil, and Paolo Frasconi.
+\newblock Hyperparameter optimization in machine learning, 2024.
+
+\bibitem{bischl2021foundations}
+Bernd Bischl, Martin Binder, Michel Lang, Tobias Pielok, Jakob Richter, Stefan
+  Coors, Janek Thomas, Theresa Ullmann, Marc Becker, Anne-Laure Boulesteix,
+  et~al.
+\newblock Hyperparameter optimization: Foundations, algorithms, best practices
+  and open challenges.
+\newblock {\em arXiv preprint}, abs/2107.05847, 2021.
+
+\bibitem{wistuba2021few}
+Martin Wistuba and Josif Grabocka.
+\newblock Few-shot bayesian optimization with deep kernel surrogates.
+\newblock {\em arXiv preprint arXiv:2101.07667}, 2021.
+
+\bibitem{vanschoren2018meta}
+Joaquin Vanschoren.
+\newblock Meta-learning: A survey.
+\newblock {\em arXiv preprint arXiv:1810.03548}, 2018.
+
+\bibitem{feurer2022auto}
+Matthias Feurer, Katharina Eggensperger, Stefan Falkner, Marius Lindauer, and
+  Frank Hutter.
+\newblock Auto-sklearn 2.0: Hands-free automl via meta-learning.
+\newblock {\em Journal of Machine Learning Research}, 23(261):1--61, 2022.
+
+\bibitem{erickson2020autogluon}
+Nick Erickson, Jonas Mueller, Alexander Shirkov, Hang Zhang, Pedro Larroy,
+  Mu~Li, and Alexander Smola.
+\newblock Autogluon-tabular: Robust and accurate automl for structured data.
+\newblock {\em arXiv preprint arXiv:2003.06505}, 2020.
+
+\bibitem{perrone2020amazon}
+Valerio Perrone, Huibin Shen, Aida Zolic, Iaroslav Shcherbatyi, Amr Ahmed,
+  Tanya Bansal, Michele Donini, Fela Winkelmolen, Rodolphe Jenatton,
+  Jean~Baptiste Faddoul, et~al.
+\newblock Amazon sagemaker automatic model tuning: Scalable black-box
+  optimization.
+\newblock {\em arXiv preprint arXiv:2012.08489}, 1, 2020.
+
+\bibitem{golovin2017google}
+Daniel Golovin, Benjamin Solnik, Subhodeep Moitra, Greg Kochanski, John Karro,
+  and David Sculley.
+\newblock Google vizier: A service for black-box optimization.
+\newblock In {\em Proceedings of the 23rd ACM SIGKDD international conference
+  on knowledge discovery and data mining}, pages 1487--1495, 2017.
+
+\bibitem{yu2020hpo}
+Tong Yu and Hong Zhu.
+\newblock Hyper-parameter optimization: A review of algorithms and
+  applications.
+\newblock {\em CoRR}, abs/2003.05689, 2020.
+
+\bibitem{thornton2013auto}
+Chris Thornton, Frank Hutter, Holger~H Hoos, and Kevin Leyton-Brown.
+\newblock Auto-weka: Combined selection and hyperparameter optimization of
+  classification algorithms.
+\newblock In {\em Proceedings of the 19th ACM SIGKDD international conference
+  on Knowledge discovery and data mining}, pages 847--855, 2013.
+
+\bibitem{zheng2023can}
+Mingkai Zheng, Xiu Su, Shan You, Fei Wang, Chen Qian, Chang Xu, and Samuel
+  Albanie.
+\newblock Can gpt-4 perform neural architecture search?
+\newblock {\em arXiv preprint arXiv:2304.10970}, 2023.
+
+\bibitem{yang2023large}
+Chengrun Yang, Xuezhi Wang, Yifeng Lu, Hanxiao Liu, Quoc~V Le, Denny Zhou, and
+  Xinyun Chen.
+\newblock Large language models as optimizers.
+\newblock {\em arXiv preprint arXiv:2309.03409}, 2023.
+
+\bibitem{brown2020language}
+Tom Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared~D Kaplan, Prafulla
+  Dhariwal, Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda Askell,
+  et~al.
+\newblock Language models are few-shot learners.
+\newblock {\em Advances in neural information processing systems},
+  33:1877--1901, 2020.
+
+\bibitem{zhao2023survey}
+Wayne~Xin Zhao, Kun Zhou, Junyi Li, Tianyi Tang, Xiaolei Wang, Yupeng Hou,
+  Yingqian Min, Beichen Zhang, Junjie Zhang, Zican Dong, et~al.
+\newblock A survey of large language models.
+\newblock {\em arXiv preprint arXiv:2303.18223}, 1(2), 2023.
+
+\bibitem{liu2024largeBO}
+Tennison Liu, Nicol{\'a}s Astorga, Nabeel Seedat, and Mihaela van~der Schaar.
+\newblock Large language models to enhance bayesian optimization.
+\newblock {\em arXiv preprint arXiv:2402.03921}, 2024.
+
+\bibitem{zhang2023using}
+Michael~R Zhang, Nishkrit Desai, Juhan Bae, Jonathan Lorraine, and Jimmy Ba.
+\newblock Using large language models for hyperparameter optimization.
+\newblock {\em arXiv preprint arXiv:2312.04528}, 2023.
+
+\bibitem{liu2024large}
+Siyi Liu, Chen Gao, and Yong Li.
+\newblock Large language model agent for hyper-parameter optimization.
+\newblock {\em arXiv preprint arXiv:2402.01881}, 2024.
+
+\bibitem{turnerbayesmark}
+R~Turner and D~Eriksson.
+\newblock Bayesmark: Benchmark framework to easily compare bayesian
+  optimization methods on real machine learning tasks, 2019.
+\newblock {\em URL https://github. com/uber/bayesmark}, 2019.
+
+\bibitem{eggensperger2021hpobench}
+Katharina Eggensperger, Philipp M{\"u}ller, Neeratyoy Mallik, Matthias Feurer,
+  Ren{\'e} Sass, Aaron Klein, Noor Awad, Marius Lindauer, and Frank Hutter.
+\newblock Hpobench: A collection of reproducible multi-fidelity benchmark
+  problems for hpo.
+\newblock {\em arXiv preprint arXiv:2109.06716}, 2021.
+
+\bibitem{mahammadli2024sequential}
+Kanan Mahammadli and Seyda Ertekin.
+\newblock Sequential large language model-based hyper-parameter optimization.
+\newblock {\em arXiv preprint arXiv:2410.20302}, 2024.
+
+\bibitem{kroeger2024incontextexplainersharnessingllms}
+Nicholas Kroeger, Dan Ley, Satyapriya Krishna, Chirag Agarwal, and Himabindu
+  Lakkaraju.
+\newblock In-context explainers: Harnessing llms for explaining black box
+  models, 2024.
+
+\bibitem{2023burtonxaiml}
+James Burton, Noura Al~Moubayed, and Amir Enshaei.
+\newblock Natural language explanations for machine learning classification
+  decisions.
+\newblock In {\em 2023 International Joint Conference on Neural Networks
+  (IJCNN)}, pages 1--9, 2023.
+
+\bibitem{bhattacharjee2024llmguidedcausalexplainabilityblackbox}
+Amrita Bhattacharjee, Raha Moraffah, Joshua Garland, and Huan Liu.
+\newblock Towards llm-guided causal explainability for black-box text
+  classifiers, 2024.
+
+\bibitem{zytek2024explingo}
+Alexandra Zytek, Sara Pido, Sarah Alnegheimish, Laure Berti-Equille, and Kalyan
+  Veeramachaneni.
+\newblock Explingo: Explaining ai predictions using large language models.
+\newblock In {\em 2024 IEEE International Conference on Big Data (BigData)},
+  pages 1197--1208. IEEE, 2024.
+
+\bibitem{lundberg2017unified}
+Scott~M Lundberg and Su-In Lee.
+\newblock A unified approach to interpreting model predictions.
+\newblock {\em Advances in neural information processing systems}, 30, 2017.
+
+\bibitem{grushetskaya-2024}
+Yulia Grushetskaya, Mike Sips, Reyko Schachtschneider, Mohammadmehdi Saberioon,
+  and Akram Mahan.
+\newblock {\em {HPExplorer: XAI Method to explore the relationship between
+  hyperparameters and model performance}}.
+\newblock Springer, 1 2024.
+
+\bibitem{chakraborty2024explainable}
+Tanmay Chakraborty, Christin Seifert, and Christian Wirth.
+\newblock Explainable bayesian optimization.
+\newblock {\em arXiv preprint arXiv:2401.13334}, 2024.
+
+\bibitem{wei2022chain}
+Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Fei Xia, Ed~Chi, Quoc~V
+  Le, Denny Zhou, et~al.
+\newblock Chain-of-thought prompting elicits reasoning in large language
+  models.
+\newblock {\em Advances in neural information processing systems},
+  35:24824--24837, 2022.
+
+\bibitem{rivolli2019characterizingclassificationdatasetsstudy}
+Adriano Rivolli, Luís P.~F. Garcia, Carlos Soares, Joaquin Vanschoren, and
+  André C. P. L.~F. de~Carvalho.
+\newblock Characterizing classification datasets: a study of meta-features for
+  meta-learning, 2019.
+
+\bibitem{resnet}
+Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun.
+\newblock Deep residual learning for image recognition.
+\newblock {\em CoRR}, abs/1512.03385, 2015.
+
+\bibitem{xception}
+Fran{\c{c}}ois Chollet.
+\newblock Xception: Deep learning with depthwise separable convolutions.
+\newblock {\em CoRR}, abs/1610.02357, 2016.
+
+\bibitem{efficientnet}
+Mingxing Tan and Quoc Le.
+\newblock {E}fficient{N}et: Rethinking model scaling for convolutional neural
+  networks.
+\newblock In Kamalika Chaudhuri and Ruslan Salakhutdinov, editors, {\em
+  Proceedings of the 36th International Conference on Machine Learning},
+  volume~97 of {\em Proceedings of Machine Learning Research}, pages
+  6105--6114. PMLR, 09--15 Jun 2019.
+
+\bibitem{densenet}
+Gao Huang, Zhuang Liu, Laurens van~der Maaten, and Kilian~Q. Weinberger.
+\newblock Densely connected convolutional networks, 2018.
+
+\bibitem{inception}
+Christian Szegedy, Vincent Vanhoucke, Sergey Ioffe, Jonathon Shlens, and
+  Zbigniew Wojna.
+\newblock Rethinking the inception architecture for computer vision, 2015.
+
+\bibitem{nasnet}
+Barret Zoph, Vijay Vasudevan, Jonathon Shlens, and Quoc~V. Le.
+\newblock Learning transferable architectures for scalable image recognition,
+  2018.
+
+\bibitem{bal2023transfer}
+Mohamed Bal-Ghaoui, My~Hachem El~Yousfi Alaoui, Abdelilah Jilbab, and
+  Abdennaser Bourouhou.
+\newblock Transfer learning fine-tuning strategies for enhanced ultrasound
+  breast cancer classification.
+\newblock In {\em International Conference on Advanced Intelligent Systems for
+  Sustainable Development}, pages 111--117. Springer, 2023.
+
+\bibitem{woznica2021towards}
+Katarzyna Wo{\'z}nica and Przemys{\l}aw Biecek.
+\newblock Towards explainable meta-learning.
+\newblock In {\em Joint European Conference on Machine Learning and Knowledge
+  Discovery in Databases}, pages 505--520. Springer, 2021.
+
+\bibitem{lundberg2020local}
+Scott~M Lundberg, Gabriel Erion, Hugh Chen, Alex DeGrave, Jordan~M Prutkin,
+  Bala Nair, Ronit Katz, Jonathan Himmelfarb, Nisha Bansal, and Su-In Lee.
+\newblock From local explanations to global understanding with explainable ai
+  for trees.
+\newblock {\em Nature machine intelligence}, 2(1):56--67, 2020.
+
+\bibitem{anthropic2025claude}
+Anthropic.
+\newblock Claude sonnet 4 [large language model].
+\newblock \url{https://claude.ai/chats}, 2025.
+\newblock Accessed on July 30, 2025.
+
+\bibitem{ollama}
+Ollama.
+\newblock Ollama: Run large language models locally.
+\newblock \url{https://ollama.com/}.
+\newblock Accessed: July 30, 2025.
+
+\bibitem{lewis2020retrieval}
+Patrick Lewis, Ethan Perez, Aleksandra Piktus, Fabio Petroni, Vladimir
+  Karpukhin, Naman Goyal, Heinrich K{\"u}ttler, Mike Lewis, Wen-tau Yih, Tim
+  Rockt{\"a}schel, et~al.
+\newblock Retrieval-augmented generation for knowledge-intensive nlp tasks.
+\newblock {\em Advances in neural information processing systems},
+  33:9459--9474, 2020.
+
+\bibitem{douze2024faiss}
+Matthijs Douze, Alexandr Guzhva, Chengqi Deng, Jeff Johnson, Gergely Szilvasy,
+  Pierre-Emmanuel Mazaré, Maria Lomeli, Lucas Hosseini, and Hervé Jégou.
+\newblock The faiss library.
+\newblock 2024.
+
+\bibitem{langchain}
+LangChain.
+\newblock Langchain documentation.
+\newblock \url{https://python.langchain.com/}.
+\newblock Accessed: July 30, 2025.
+
+\bibitem{tourist55alzheimers}
+Tourist55.
+\newblock Alzheimer's mri dataset - 4 class of images, 2020.
+
+\bibitem{sartaj_bhuvaji_ankita_kadam_prajakta_bhumkar_sameer_dedge_swati_kanchan_2020}
+Sartaj Bhuvaji, Ankita Kadam, Prajakta Bhumkar, Sameer Dedge, and Swati
+  Kanchan.
+\newblock Brain tumor classification (mri), 2020.
+
+\bibitem{al-dhabyani-2019}
+Walid Al-Dhabyani, Mohammed Gomaa, Hussien Khaled, and Aly Fahmy.
+\newblock {Dataset of breast ultrasound images}.
+\newblock {\em Data in Brief}, 28:104863, 2019.
+
+\bibitem{chestCTscan}
+Mohamed Hany.
+\newblock Chest ct scan images, 2020.
+
+\bibitem{cohen2020covidProspective}
+Joseph~Paul Cohen, Paul Morrison, Lan Dao, Karsten Roth, Tim~Q Duong, and
+  Marzyeh Ghassemi.
+\newblock Covid-19 image data collection: Prospective predictions are the
+  future.
+\newblock {\em arXiv preprint arXiv:2006.11988}, 2020.
+
+\bibitem{eyeOCT}
+Guna~Venkat Doddi.
+\newblock Eye diseases classification, 2021.
+
+\bibitem{kidneyCT}
+{Anonymous Radiology Group}.
+\newblock Kidney ct dataset for tumor, stone, cyst and normal, 2020.
+\newblock Collected from hospitals in Dhaka, Bangladesh.
+
+\bibitem{skinISIC}
+International Skin Imaging~Collaboration (ISIC).
+\newblock Skin cancer isic dataset, 2020.
+\newblock ISIC 2018 Challenge Dataset.
+
+\bibitem{ullah2022meta}
+Ihsan Ullah, Dustin Carri{\'o}n-Ojeda, Sergio Escalera, Isabelle Guyon, Mike
+  Huisman, Felix Mohr, Jan~N Van~Rijn, Haozhe Sun, Joaquin Vanschoren, and
+  Phan~Anh Vu.
+\newblock Meta-album: Multi-domain meta-dataset for few-shot image
+  classification.
+\newblock {\em Advances in Neural Information Processing Systems},
+  35:3232--3247, 2022.
+
+\end{thebibliography}

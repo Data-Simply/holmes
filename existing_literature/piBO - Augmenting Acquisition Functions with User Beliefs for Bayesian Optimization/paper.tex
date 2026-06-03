@@ -1,0 +1,465 @@
+\documentclass{article}
+
+\usepackage{iclr2022_conference, times}
+\usepackage{float}
+\iclrfinalcopy
+%\usepackage{selectp}
+%\outputonly{1-13}
+
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+\usepackage{xcolor}
+\input{includes/packages}
+
+\usepackage{bm}
+
+%% Macros from previous paper
+\newcommand{\param}{\bm{x}}
+\newcommand{\Param}{\mathcal{X}}
+\newcommand{\prior}{P(\param)}
+\newcommand{\model}{\mathcal{M}\xspace}
+\newcommand{\gptheta}{{\bm \theta}}
+\newcommand{\spatial}{\texttt{Spatial}\xspace}
+\newcommand{\history}{\mathcal{D}_{t}\xspace}
+\newcommand{\ps}{\p_*}
+
+\newcommand{\frank}[1]{\todo[color=yellow]{Frank: #1}} % black text on blue background was very hard to read
+\newcommand{\marius}[1]{\todo[color=teal]{Marius: #1}}
+\newcommand{\carl}[1]{{\todo[color=purple]{Carl: #1}}}
+\newcommand{\artur}[1]{\todo[color=olive]{Artur: #1}}
+\newcommand{\luigi}[1]{\todo[color=orange]{Luigi: #1}}
+\newcommand{\danny}[1]{\todo[color=red]{Danny: #1}}
+\newcommand{\method}[0]{\text{${\pi}$BO}\xspace}
+\newcommand{\methodtwo}[0]{\text{${\bm{\pi}}$BO}\xspace}
+\newcommand{\pri}[0]{{\pi}}
+\newcommand{\pei}[0]{$\text{EI}_\pi$}
+\newcommand{\peixn}[0]{\text{EI}_{\pi,n}(\bm{x})}
+\newcommand{\eixn}[0]{\text{EI}_{n}(\bm{x})}
+\newcommand{\xinx}[0]{\bm{x}\in\mathcal{X}}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\newtheorem{innercustomthm}{Theorem}
+\newenvironment{customthm}[1]
+  {\renewcommand\theinnercustomthm{#1}\innercustomthm}
+  {\endinnercustomthm}
+\newtheorem{innercustomcorl}{Corollary}
+\newenvironment{customcorl}[1]
+  {\renewcommand\theinnercustomcorl{#1}\innercustomcorl}
+  {\endinnercustomcorl}
+
+
+
+%\title{\methodtwo: Bayesian Optimization \\ with Priors over the Optimum}
+
+\title{\methodtwo: Augmenting Acquisition Functions with User Beliefs for Bayesian Optimization}
+
+%FH: I actually think I prefer the old title over this new one. "User-guided" to me suggests some form of *interaction*, and we might well get reviewers asking for that. Also, the old title had the word "beliefs" in the title, which I liked.
+%$\pi$BO: Augmenting Acquisition Functions with User Beliefs for Bayesian Optimization 
+
+% The \author macro works with any number of authors. There are two commands
+% used to separate the names and addresses of multiple authors: \And and \AND.
+%
+% Using \And between authors leaves it to LaTeX to determine where to break the
+% lines. Using \AND forces a line break at that point. So, if LaTeX puts 3 of 4
+% authors names on the first line, and the last on the second line, try using
+% \AND instead of \And before the third author name.
+
+\author{%
+  Carl Hvarfner$^1$, Danny Stoll$^2$, Artur Souza$^3$, Marius Lindauer$^4$, Frank Hutter$^{2,5}$ \& Luigi Nardi$^{1,6}$\\
+  $^1$Lund University, $^2$University of Freiburg, $^3$Federal University of Minas Gerais,\\ $^4$Leibniz University Hannover, $^5$Bosch Center for Artificial Intelligence, $^6$Stanford University\\\texttt{\{carl.hvarfner, luigi.nardi\}@cs.lth.se},\\\texttt{\{stolld, fh\}@cs.uni-freiburg.de},\\ \texttt{arturluis@dcc.ufmg.br}, \texttt{lindauer@tnt.uni-hannover.de}}
+%  % examples of more authors
+%   \And
+%   Danny Stoll \\
+%    University of Freiburg \\
+%   \texttt{stolld@informatik.uni-freiburg.de} \\
+%   \AND
+%   Artur Souza\\
+%   Federal University of Minas Gerais \\
+%   \texttt{arturluis@dcc.ufmg.br} \\
+%   \And
+%   Marius Lindauer \\
+%   Leibniz University Hannover \\
+%   \texttt{lindauer@tnt.uni-hannover.de} \\
+%  \And
+%   Frank Hutter \\
+%    University of Freiburg, \\
+%    Bosch Center for Artificial Intelligence \\
+%   \texttt{fh@cs.uni-freiburg.de} \\
+%     \And
+%    Luigi Nardi \\
+%   Lund University,  \\
+%   Stanford University \\
+%   \texttt{luigi.nardi@cs.lth.se} \\
+  
+
+
+\pgfplotsset{compat=1.17}
+
+\begin{document}
+
+\maketitle
+
+%\danny{Regarding the title: The word 'user' might be associated with 'practical considerations, not research' for some readers. Perhaps we can say Expert Beliefs or Prior Beliefs or Domain Expertise?}
+%\danny{Perhaps there is a better word than 'with', e.g., via, based on, through, using?}
+% Drop black box and go directly to HPO
+\begin{abstract}
+Bayesian optimization (BO) has become an established framework and popular tool for hyperparameter optimization (HPO) of machine learning (ML) algorithms. While known for its sample-efficiency, vanilla BO can not utilize readily available prior beliefs the practitioner has on the potential location of the optimum.  Thus, BO disregards a valuable source of information, reducing its appeal to ML practitioners. To address this issue, we propose \method, an acquisition function generalization which incorporates prior beliefs about the location of the optimum in the form of a probability distribution, provided by the user. In contrast to previous approaches, \method is conceptually simple and can easily be integrated with existing libraries and many acquisition functions. We provide regret bounds when \method is applied to the common Expected Improvement acquisition function and prove convergence at regular rates independently of the prior. Further, our experiments show that \method outperforms competing approaches across a wide suite of benchmarks and prior characteristics. We also demonstrate that \method improves on the state-of-the-art performance for a popular deep learning task, with a $12.5\times$ time-to-accuracy speedup over prominent BO approaches.
+%\danny{Should we say something about the DL case studies in the abstract?}
+
+%speed-ups of prior knowledge-infusion, as well as state-of-the-art performance with regard to other frameworks considering priors over the optimum.
+\end{abstract}
+
+\section{Introduction} \label{intro}
+The optimization of expensive black-box functions is a prominent task, arising across a wide range of applications. Bayesian optimization (BO) is a  sample-efficient approach to cope with this task, and has been successfully applied to various problem settings, including hyperparameter optimization (HPO)~\citep{snoek-nips12a}, neural architecture search (NAS)~\citep{ru2021interpretable}, joint NAS and HPO~\citep{zimmer-tpami21a}, algorithm configuration~\citep{smac},
+ hardware design~\citep{nardi2019practical}, robotics~\citep{calandra-lion14a}, and the game of Go~\citep{Chen2018BayesianOI}.
+ % We could add some additional non-standard applications, such as molecule design, etc, but I don't have any references handy for these, either. 
+
+Despite the demonstrated effectiveness of BO for HPO \citep{bergstra-nips11a, pmlr-v133-turner21a}, its adoption among practitioners remains limited. In a survey covering NeurIPS 2019 and ICLR 2020~\citep{bouthillier:survey}, manual search was shown to be the most prevalent tuning method, with BO accounting for less than 7\% of all tuning efforts.  As the understanding of hyperparameter settings in deep learning (DL) models increase~\citep{smith2018disciplined}, so too does the tuning proficiency of practitioners~\citep{Anand2020BlackMI}. As previously displayed \citep{smith2018disciplined, Anand2020BlackMI, souza2021bayesian, atmseer}, this knowledge manifests in choosing single configurations or regions of hyperparameters that presumably yield good results, demonstrating a belief over the location of the optimum. BO's deficit to properly incorporate said beliefs is a reason why practitioners prefer manual search to BO~\citep{atmseer}, despite its documented shortcomings~\citep{JMLR:v13:bergstra12a}. To improve the usefulness of automated HPO approaches for ML practictioners, the ability to incorporate such knowledge is pivotal. 
+
+Well-established BO frameworks~\citep{snoek-nips12a, smac, gpyopt2016, Dragonfly, balandat2020botorch} support user input to a limited extent, such as by biasing the initial design, or by narrowing the search space; however, this type of hard prior can lead to poor performance by missing important regions. BO also supports a prior over functions $p(f)$ via the Gaussian Process kernel. However, this option for injecting knowledge is not aligned with the knowledge that experts possess: they often know which \textit{ranges of hyperparameter values} tend to work best~\citep{Perrone2019LearningSS, smith2018disciplined, atmseer}, and are able to specify a probability distribution to quantify these priors. For example, many users of the Adam optimizer~\citep{kingma2014adam} know that its best learning rate is often in the vicinity of $1\times10^{-3}$. In practice, DL experiments are typically conducted in a low-budget setting of less than 50 full model trainings~\citep{bouthillier:survey}. As such, practitioners want to exploit their knowledge efficiently without wasting early model trainings on configurations they expect to likely perform poorly. Unfortunately, this suits standard BO poorly, as BO requires a moderate number of function evaluations to learn about the response surface and make informed decisions that outperform random search.
+
+While there is a demand to increase knowledge injection possibilities to further the adoption of BO, the concept of encoding prior beliefs over the location of an optimum is still rather novel: while there are some initial works \citep{RAMACHANDRAN2020105663, Li2020IncorporatingEP, souza2021bayesian}, no approach exists so far that allows the integration of 
+%cross-framework approach that considers
+arbitrary priors 
+%over the search space 
+and offers flexibility in the choice of acquisition function; theory is also lacking.
+We close this gap by introducing a novel, remarkably simple, approach for injecting arbitrary prior beliefs into BO that is easy to implement, agnostic to the surrogate model used and converges at standard BO rates for any choice of prior.
+
+\textbf{Our contributions}\quad After discussing our problem setting, related work, and background (Section~\ref{sec:background}), we make the following contributions:
+\begin{enumerate}
+    \item We introduce \method, a novel generalization of myopic acquisition functions that accounts for user-specified prior distributions over possible optima, is demonstrably simple-to-implement, and can be easily combined with arbitrary surrogate models (Section \ref{sec:pw_acq} \&~\ref{sec:dpw_acq});
+    \item We formally prove that $\pi$BO inherits the theoretical properties of the well-established Expected Improvement acquisition function (Section \ref{sec:theory});
+    \item We demonstrate on a broad range of established benchmarks and in DL case studies that \method can yield $12.5\times$ time-to-accuracy speedup over vanilla BO (Section \ref{results}).
+\end{enumerate}
+
+
+\section{Background and Related Work}\label{sec:background}
+
+\subsection{Black-box Optimization} 
+We consider the problem of optimizing a black-box function $f$ across a set of feasible inputs $\mathcal{X}\subset\mathbb{R}^d$:
+\begin{equation}
+    \bm{x}^* \in \argmin_{\bm{x}\in \mathcal{X}} f(\bm{x}).
+    \label{eq:boo}
+    \end{equation}
+We assume that $f(x)$ is expensive to evaluate, and can potentially only be observed through a noisy estimate, $y$. In this setting, we wish to minimize $f$ in an efficient manner, typically adhering to a budget which sets a cap on the number of points that can be evaluated. 
+
+\paragraph{Black-Box Optimization with Probabilistic User Beliefs}
+In our work, we consider an augmented version of the optimization problem in Eq. \eqref{eq:boo}, where we have access to user beliefs in the form of a probability distribution on the location of the optimum. Formally, we define the problem of black-box optimization with probabilistic user beliefs as solving Eq. \eqref{eq:boo}, given a user-specified prior probability on the location of the optimum defined as
+\begin{equation}
+    \pri (\bm{x}) = \mathbb{P}\left(f(\bm{x}) = \min_{\bm{x}'\in\mathcal{X}} f(\bm{x}')\right),
+    \label{eq:prior}
+\end{equation}
+where regions that the user expects to likely to contain an optimum will have a high value. We note that, without loss of generality, we require $\pri$ to be strictly positive on all of $\mathcal{X}$, i.e., any point in the search space might be an optimum. Since the user belief $\pri (\bm{x})$ can be inaccurate or even misleading, optimizing Eq.~\eqref{eq:boo} given \eqref{eq:prior} is a challenging problem.
+
+
+\subsection{Bayesian Optimization}\label{sec:bo}
+
+We outline Bayesian optimization \citep{Mockus1978,brochu-arXiv10a,shahriari-ieee16a}.
+
+% Change the problem setting so that we include the user prior 
+\paragraph{Model}
+BO aims to globally minimize $f$ by an initial experimental design \mbox{$\mathcal{D}_0 = \{(\bm{x}_i, y_i)\}^M_{i=1}$} and thereafter sequentially deciding on new points $\bm{x}_n$ to form the data $\mathcal{D}_n = \mathcal{D}_{n-1} \cup \{{(\bm{x}_n, y_n)}\}$ for the $n$-th iteration with $n \in \{1 \ldots N\}$. After each new observation, BO constructs a probabilistic surrogate model of $f$ and uses that surrogate to evaluate an acquisition function $\alpha(\bm{x}, \mathcal{D}_n)$. The combination of surrogate model and acquisition function encodes the policy for selecting the next point $\bm{x}_{n+1}$. When constructing the surrogate, the most common choice is Gaussian processes~\citep{rasmussen-book06a}, which model $f$ as $p(f|\mathcal{D}_n) = \mathcal{GP}(m, k)$, 
+%\luigi{$\mu$ is not defined in this section.}
+with prior mean $m$ (which is typically $0$) and positive semi-definite covariance kernel $k$. The posterior mean $m_n$ and the variance $s_n^2$ are 
+\begin{equation}
+    m_n(\bm{x}) = \mathbf{k}_n(\bm{x})^\top(\mathbf{K}_n + \sigma_n^2\mathbf{I})\mathbf{y},\quad
+    s_n^2(\bm{x}) =  k(\bm{x}, \bm{x}) - \mathbf{k}_n(\bm{x})^\top(\mathbf{K}_n + \sigma_n^2\mathbf{I})\mathbf{k}_n(\bm{x}),
+\end{equation}
+%(typically of the Matérn \cite{matern1960spatial} class), 
+where $(\mathbf{K}_n)_{ij} = k(\bm{x}_i, \bm{x}_j)$, $\mathbf{k}_n(\bm{x}) = [k (\bm{x}, \bm{x}_1), \ldots, k(\bm{x}, \bm{x}_n)]^\top$ and $\sigma^2_n$ is the estimation of the observation noise variance $\sigma^2$. Alternative surrogate models include Random forests~\citep{smac} and Bayesian neural networks~\citep{springenberg-nips2016}.
+%\frank{define all symbols used, i.e., also including $\mathbf{K}$, $\mathbf{k}_n$, and $\sigma^2$.} 
+%\frank{In the minimal description of GPs, we definitely don't need to mention length scales; can you please introduce them in the section regarding the proof when you need them? Likewise, there is no need to delve into / mention Reproducing Kernel Hilbert spaces anywhere but in the section with the proof.}
+
+\paragraph{Acquisition Functions} 
+To obtain new candidates to evaluate, BO employs a criterion, called an acquisition function, that encapsulates an explore-exploit trade-off. By maximizing this criterion at each iteration, one or more candidate point are obtained and added to observed data. Several acquisition functions are used in BO; the most common of these is Expected Improvement (EI) \citep{jonesei}. For a noiseless function, EI selects the next point $\bm{x}_{n+1}$, where $f^*_n$ is the minimal objective function value observed by iteration $n$, as
+\begin{equation}
+    \bm{x}_{n+1} \in \argmax_{\bm{x}\in\mathcal{X}} \mathbb{E}\left[[(f^*_n - f(\bm{x})]^+\right] = \argmax_{\bm{x}\in\mathcal{X}} Zs_n(\bm{x})\Phi(Z) + s_n(\bm{x})\phi(Z),
+\end{equation} \label{eq:ei}
+\noindent{} where $Z = (f_n^* - m_n(\bm{x}))/s_n(\bm{x})$. Thus, EI provides a myopic strategy for determining promising points; it also comes with convergence guarantees \citep{JMLR:v12:bull11a}. Similar myopic acquisition functions are Upper Confidence Bound (UCB)~\citep{Srinivas_2012}, Probability of Improvement (PI)~\citep{jones2001taxonomy,pi} and Thompson Sampling (TS)~\citep{thompson1933likelihood}.
+%, rank points by similar myopic approaches. 
+A different class of acquisition functions is based on non-myopic criteria, such as Entropy Search~\citep{entropysearch}, Predictive Entropy Search~\citep{pes} and Max-value Entropy Search~\citep{wang2018maxvalue}, which select points to minimize the uncertainty about the optimum, and the Knowledge Gradient~\citep{kg}, which aims to minimize the posterior mean of the surrogate at the subsequent iteration. Our work applies to all acquisition functions in the first class, and we leave its extension to those in the second class
+%information-theoretic criteria 
+for future work. 
+%\carl{I've now divided them into heuristics (which they all are, in a sense) and information-theoretic. I don't love it (especially clumping TS with the others, but now we have a distinction on where our method works and doesn't). TS needs further discussion}
+%\frank{I am not fond of ``heuristics'', since it carries a negative conotation in ML; I've reworded to the standard term ``myopic''.}
+%\frank {A natural question we might get in the reviews is why we don't look at these information-theoretic approaches, too, as these acquisition functions seem, in a sense, to be a more direct match to the approach.} 
+%\carl{That's fair. Do you have any thoughts as to how we may counter this?}
+%\frank{Not yet, but it's good to anticipate ... 
+%Thinking about it, it should probably be possible to directly integrate the prior belief into the Pmin distribution of information-theoretic approaches, and at the very least the idea of decaying that prior should help. That approach might also be competitive, but I think reviewers should agree that it's reasonable to leave this for future work as there are many questions about the details of how this plays along with ES.}
+%\carl{Maybe something we should explicitly add to limitations then - to signal that we have considered it.}
+
+\subsection{Related Work}\label{related}
+%\danny{Do we not talk about guided ML / guided AutoML on purpose?}
+%\carl{No, we just missed it. Do you think it shoul be included?}
+%\danny{Not sure.}
+%\frank{I agree with a previous comment of Marius: right now, this related work section lists a lot of material, but during its discussion it is unclear how it relates to our paper. If possible, it would be optimal to make that relation clear for the work described in every paragraph (probably except the first overview paragraph).}
+
+%While we consider knowledge transfers via user-specified priors on the optimum, the landscape of knowledge transfer in BO entails several types of approaches. These can fundamentally be split into three main categories based on the type of conveyed knowledge: transfer learning for BO, priors over function structure and priors over function optimum. Transfer learning automatically provides information from previous BO runs, while the two latter approaches incorporate assumptions on the black-box function provided either directly or indirectly by the user.
+There are two main categories of approaches that exploit prior knowledge in BO: approaches that use records of previous experiments, and approaches that incorporate assumptions on the black-box function provided either directly or indirectly by the user. As \method exploits prior knowledge from users, we briefly discuss approaches which utilize previous experiments, and then comprehensively discuss the literature on exploiting expert knowledge.
+
+\textbf{Learning from Previous Experiments}\quad
+Transfer learning for BO aims to automatically extract and use knowledge from prior executions of BO.
+These executions can come, for example, from learning and optimizing the hyperparameters of a machine learning algorithm on different datasets \citep{rijn2018importance, swersky-nips13a,wistuba-pkdd15a,Perrone2019LearningSS,Feurer2015InitializingBH,feurer2018practical}, or from optimizing the hyperparameters at different development stages \citep{stoll2020meta}.
+For a comprehensive overview of meta learning for hyperparameter optimization, please see the survey from \citet{vanschoren2018metalearning}.
+% There are many different approaches to achieving a transfer across trials: fitting a joint model across trials \cite{swersky-nips13a,perrone-neurips18a, warmstart}, pruning the search space \cite{wistuba-pkdd15a,Perrone2019LearningSS}, learning an initial design \cite{Feurer2015InitializingBH,lindauer-aaai18,pfisterer2021learning}, or using combinations of individual trial-models \cite{wistuba2016two,lindauer-aaai18,feurer2018practical}.
+% In contrast to many transfer learning approaches, \method does not depend on meta-features~\cite{feurer-aaai15a}; it also incorporates the user's prior instead of information gained from different experiments.
+In contrast to these transfer learning approaches, \method and the related work discussed below does not hinge on the existence of previous experiments, and can therefore be applied more generally.
+
+\textbf{Incorporating Expert Priors over Function Structure}\quad 
+%\luigi{Discuss how these techniques relate to our paper: use some version of the commented text}
+BO can leverage structural priors on how the objective function is expected to behave. Traditionally, this is done via the surrogate model's prior over functions, e.g., the kernel of the GP. However, there are lines of work that explore additional structural priors for BO to leverage. For instance, both SMAC~\citep{smac} and iRace~\citep{lopez2016irace} support structural priors in the form of log-transformations, \citet{liaccelerating} propose to use knowledge about the monotonicity of the objective function as a prior for BO, and \citet{pmlr-v32-snoek14} model non-stationary covariance between inputs by warping said inputs.
+%However, these are not properly reflected in the predictive models and both cannot explicitly recover from bad priors.
+
+\citet{oh2018bock} and \citet{siivola2018correcting} both propose structural priors tailored to high-dimensional problems, addressing the issue of over-exploring the boundary described by \citet{swersky2017improving}. \citet{oh2018bock} propose a cylindrical kernel that expands the center of the search space and shrinks the edges, while \citet{siivola2018correcting} propose adding derivative signs to the edges of the search space to steer BO towards the center. 
+%They assume that users always place regions they expect to be good at the center of the search space and then develop BO approaches that favor configurations near the center. However, this is a rigid assumption about optimum locality, which does not allow users to freely specify their priors.
+Lastly, \citet{shahriari2016unbounded} propose a BO algorithm for unbounded search spaces which uses a regularizer to penalize points based on their distance to the center of the user-defined search space. 
+%\frank{I changed the above based on my memory of their algorithm; maybe better check ;-)}
+All of these approaches incorporate prior information on specific properties of the function or search space, and are thus not always applicable. Moreover, they do not generally direct the search to desired regions of the search space, offering the user little control over the selection of points to evaluate.%\frank{Does it indeed punish distance to the initial search space, or distance to the center of that search space? I thought the latter.}
+% The priors in their work are not about good regions of the search space, but rather a regularization function that penalizes configurations based on their distance to the center of the user-defined search space. The priors are automatically derived from the search space and not provided by users.
+
+
+\textbf{Incorporating Expert Priors over Function Optimum}\quad 
+Few previous works have proposed to inject explicit prior distributions over the location of an optimum into BO. In these cases, users explicitly define a prior that encodes their beliefs on where the optimum is more likely to be located. \citet{bergstra-nips11a} suggest an approach that supports prior beliefs from a fixed set of distributions. However, this approach cannot be combined with standard %generalized to other 
+acquisition functions. BOPrO~\citep{souza2021bayesian} employs a similar structure that combines the user-provided prior distribution with a data-driven model into a pseudo-posterior. From the pseudo-posterior, configurations are selected using the EI acquisition function, using the formulation in \citet{bergstra-nips11a}. While BOPrO is able to recover from misleading priors, its design restricts it to only use EI. Moreover, it does not provide the convergence guarantees of \method{}.
+
+\citet{Li2020IncorporatingEP} propose to infer a posterior conditioned on both the observed data and the user prior through repeated Thompson sampling and maximization under the prior. 
+%\luigi{Does Li et al come with convergence guarantees? If not we can mention that as well as a downside.}
+%\carl{It does.}
+This method displays robustness against misleading priors but lacks in empirical performance. Additionally, it is restricted to only one specific acquisition function. 
+%In another recent work, 
+\citet{RAMACHANDRAN2020105663} use 
+the probability integral transform to warp the search space, stretching high-probability regions and shrinking others. While the approach is model- and acquisition function agnostic, it requires invertible priors, and does not empirically display the ability to recover from misleading priors. In Section \ref{results}, we demonstrate that \method{} compares favorably for priors over the function optimum, and shows improved empirical performance. Additionally, we do a complete comparison of all approaches in Appendix~\ref{sec:competition}.
+%\frank{It would be good to mention the work by Ramachandran last that we empirically compare against, and state here that we do benchmark against it.}
+%\carl{I'm not really sure what you mean here}
+
+In summary, \method{} sets itself apart from the methods above by being simpler (and thus easier to implement in different frameworks), flexible with regard to different acquisition functions and different surrogate models, the availability of theoretical guarantees, and, as we demonstrate in Section \ref{results}, better empirical results.
+
+\section{Methodology}\label{sec:methodology}
+We now present \method{}, which allows users to specify their belief about the location of the optimum through any probability distribution. A conceptually simple approach, \method{} can be easily implemented in existing BO frameworks and can be combined directly with the myopic acquisition functions listed above. \method{} augments an acquisition function to emphasize promising regions under the prior, ensuring such regions are to be explored frequently. As optimization progresses, the \method{} strategy increasingly resembles that of vanilla BO, retaining its standard convergence rates (see Section \ref{sec:theory}).  \method{} is publicly available as part of the SMAC (\url{https://github.com/automl/SMAC3}) and HyperMapper (\url{https://github.com/luinardi/hypermapper}) HPO frameworks.
+ \subsection{Prior-weighted Acquisition Function}\label{sec:pw_acq}
+In \method{}, we consider $\pri(\bm{x})$ in Eq. \eqref{eq:prior} to be a weighting scheme on points in $\mathcal{X}$.
+The heuristic provided by an acquisition function $\alpha(\bm{x}, \mathcal{D}_n)$, such as EI in Eq.~(\ref{eq:ei}), can then be combined with said weighting scheme to form a prior-weighted version of the acquisition function. The resulting strategy then becomes:
+\begin{equation} \label{eq: pbo}
+    \bm{x}_n \in \argmax_{\bm{x}\in\mathcal{X}} \alpha(\bm{x}, \mathcal{D}_n) \pri(\bm{x}). 
+\end{equation}
+This emphasizes good points under $\pri(\bm{x})$ throughout the optimization. While this property is suitable for well-located priors $\pri$, it risks incurring a substantial
+%significant 
+%empirical 
+slowdown for poorly-chosen priors; we will now show how to counter this by decaying the prior over time.
+%This approach could therefore potentially be effective for correct priors, but does not bring the desired robustness. 
+ %should ref 4.4
+%\subsection{Decaying Prior Beliefs}
+\subsection{Decaying Prior-weighted Acquisition Function}\label{sec:dpw_acq} \label{dpaf}
+%\frank{I rewrote the reasoning here; the original text is commented out in the source and I used track changes.}
+As the optimization progresses, we should increasingly trust the surrogate model over the prior; 
+the model improves with data while the user prior remains fixed.
+%standard BO, as it is based on an ever-improving model, while the user prior remains fixed.
+This cannot be achieved with the formulation in Eq. (\ref{eq: pbo}), as poorly-chosen priors would permanently slow down the optimization.
+%When incorporating the user-specified prior distribution on the optimum $\pri(\bm{x})$ into BO,  probable regions for the optimum should be well-explored early in the optimization procedure. 
+%For bad priors, however, this bias towards probable regions should not permanently slow down the optimization procedure. Moreover, these characteristics should hold for any choice of prior, independently of its strength or correctness. To accomplish this desired behaviour, the influence of the prior needs to weaken with time. Building on the concept of Souza \etal~\cite{souza2021bayesian}, we add an exponential term on the prior, $\gamma_n$, decaying towards zero.
+Rather, to accomplish this desired behaviour, the influence of the prior needs to decay over time. 
+Building on the approaches of \citet{lee2020costaware} and \citet{souza2021bayesian}, we accomplish this by raising the prior to a power $\gamma_n \in \mathbb{R}^+$, which decays towards zero with growing $n$. 
+%Building on the concept of Souza \etal~\cite{souza2021bayesian}, we add an exponential term on the prior, $\gamma_n$, decaying towards zero.
+Thus, the resulting prior $\pri_n(\bm{x}) = \pri(\bm{x})^{\gamma_n}$ reflects a belief on the location of an optimum that gets weaker with time, converging towards a uniform distribution. We set $\gamma_n = \beta/n$, where $\beta \in \mathbb{R}^+$ is a hyperparameter set by the user, reflecting their confidence in $\pri(\bm{x})$. We provide a sensitivity study on $\beta$ in Appendix~\ref{sec:ablation_beta}. 
+%\frank{Actually, $\beta$ is not a decay rate; it's rather the initial strength of the prior. In order to parameterized the decay rate by $\beta$, you'd need something like $\gamma_n = 1/(n^\beta)$.}
+%\subsection{Decaying Prior-weighted Acquisition Function}
+%With the prior-weighted acquisition function and decaying priors in mind, we now present the core of the \method approach.  
+For a given acquisition function $\alpha(\bm{x},\mathcal{D}_n)$ and user-specified prior $\pi(\bm{x})$, we define the decaying prior-weighted acquisition function at iteration $n$ as
+\begin{equation}
+    \alpha_{\pri, n}(\bm{x}, \mathcal{D}_n) \overset{\Delta}{=} \alpha(\bm{x}, \mathcal{D}_n) \pri_n(\bm{x}) \overset{\Delta}{=} \alpha(\bm{x}, \mathcal{D}_n) \pri(\bm{x})^{\beta/n} 
+    \label{eq:pibo_acquisition_function}
+\end{equation}
+and its accompanying strategy as the maximizer of $\alpha_{\pri, n}$. With the acquisition function in Eq. \eqref{eq:pibo_acquisition_function}, the prior will assume large importance initially, promoting the selection of points close to the prior mode. With time, the exponent on the prior will tend to zero, making the prior tend to uniform. Thus, with increasing $n$, the point selection of $\alpha_{\pri, n}$ becomes increasingly similar to that of $\alpha$. 
+Algorithm~\ref{alg_pibo} displays the simplicity of the new strategy, highlighting the required one-line change  (Line \ref{diff}) in the main BO loop. In Line~\ref{line:init}, the mode of the prior is used as a first initial sample if available. Otherwise, only sampling is used for initialization.
+
+%ALGO
+%\begin{wrapfigure}{r}{0.5\textwidth}
+%\begin{minipage}{0.5\textwidth}
+\begin{algorithm}[H]
+	\caption{\method\;Algorithm} 
+	\begin{algorithmic}[1]
+	\State {\bfseries Input:} Input space $\mathcal{X}$, prior distribution over optimum $\pi(\bm{x})$, prior confidence parameter $\beta$, size $M$ of the initial design, max number of optimization iterations $N$.
+	\State {\bfseries Output:} Optimized design $\bm{x}^*$.
+	\State $\textcolor{blue}{\{\bm{x}_{i}\}_{i=1}^M \sim \pi(\bm{x})}$, $\{y_i \leftarrow f(\bm{x}_i) + \epsilon_i\}_{i=1}^M, \quad  \epsilon_i \sim N(0, \sigma^2)$ \label{line:init}
+	\State $\mathcal{D}_0 \leftarrow \{(\bm{x}_{i}, y_i)\}_{i=1}^M$
+	\For{\{$n=1,2,\ldots, N$\}}
+	    %\State $\mu(\bm{x}), s_n^2(\bm{x}) \label{diff} \leftarrow FitSurrogate(\mathcal{D}_{n-1})$
+	    %\frank{This should not be $\alpha_\pi$, but $\alpha_{\pi_n}$, right?}
+        \State $\bm{x}_{new} \leftarrow \argmax_{\bm{x}\in \mathcal{X}}\alpha(\bm{x}, \mathcal{D}_{n-1})\textcolor{blue}{\pri(\bm{x})^{\beta/n}}$ \label{diff} 
+        \State $y_{new} \leftarrow f(\bm{x}_{new}) + \epsilon_i$
+        \State $\mathcal{D}_{n} \leftarrow \mathcal{D}_{n-1} \cup \{(\bm{x}_{new}, y_{new})\}$
+	\EndFor\\
+	\Return $\bm{x}^* \leftarrow \argmin_{(\bm{x}_i,y_i) \in \mathcal{D}_{N}} y_i$
+	\end{algorithmic}
+	\label{alg_pibo}
+\end{algorithm}
+%\end{minipage}
+%\end{wrapfigure}
+%\frank{For this part (``As our proposed ... input space''), I thought it's quite redundant with what was said before and could actually be removed (with a pointer to the appendix).}
+
+To illustrate the behaviour of \method{}, we consider a toy problem with Gaussian priors on three different locations of the 1D space (center, left and right) as displayed in Figure \ref{fig1}. 
+We define a 1D-Log-Branin toy problem by setting the second dimension of the 2D Branin function to
+the global optimum $x_2 = 2.275$ and optimizing for the first dimension. Initially (iteration 4 in the top row), \method amplifies the acquisition function $\alpha$ in high-probability regions, putting a lot of trust in the prior.
+%only allowing the acquisition function to have a small impact. 
+As the prior decays (iteration 6 and 8 in the middle and bottom rows, respectively), the influence of the prior on the point selection decreases. By later iterations, \method has searched substantially around the prior mode, and moves gradually towards other parts of the search space. This is of particular importance for the scenarios in the right column, where \method recovers from a misleading prior. In Appendix~\ref{sec:other_fw}, we show that \method{} is applicable to different surrogate models and acquisition functions.
+
+\begin{figure}[tb] 
+\centering
+  \includegraphics[width=\linewidth]{images/acq_comb.png}
+  \caption{Rescaled values of prior-weighted EI (purple), EI (blue) and $\pi_n$ (red) on a 1D-Branin in logscale (grey) with global optimum in the center of the search space. Runs with two different prior locations (``Well-located'' slightly right of optimum, ``Off-center'' significantly left of optimum) are shown in the two columns. Each row represents an iteration (iteration 4, 6 and 8), for an optimization run with $\beta=2$. The current selection can be seen as a vertical violet line, and all previous observations are marked as crosses. \method amplifies EI in a gradually increasing region around the prior, and moves away from the prior as iterations progress. This is particularly evident in the Off-center example.}
+\label{fig1}
+\end{figure}
+\subsection{Theoretical Analysis} \label{sec:theory}
+% Kernel of the matern class with smoothness \nu
+We now study the \method method from a theoretical standpoint when paired with the EI acquisition function. For the full proof, we refer the reader to Appendix~\ref{sec:appendix_proof}.
+To provide convergence rates, we rely on the set of assumptions introduced by \citet{JMLR:v12:bull11a}. 
+These assumptions are satisfied for popular kernels like the \citet{matern1960spatial} class and the Gaussian kernel, which is obtained in the limit $\nu \rightarrow \infty$, 
+where the rate $\nu$ controls the smoothness of functions from the GP prior.
+Our theoretical results apply when both length scales ${\bm{\ell}}$ and the global scale of variation $\sigma$ are fixed; these results can then be extended to the case where the kernel hyperparameters are learned using Maximum Likelihood Estimation (MLE) following the same procedure as in \citet{JMLR:v12:bull11a} (Theorem 5).
+%\frank{Could we say: ``We detail this extension in Appendix X.'', or is this going to be complicated?}
+We define the loss over the ball $B_R$ for a function $f$ of norm $||f||_{\mathcal{H}_{\bm{\ell}}(\mathcal{X})} \leq R$ in the reproducing kernel Hilbert space (RKHS) $\mathcal{H}_{\bm{\ell}}(\mathcal{X})$ given a symmetric positive-definite kernel $K_{\bm{\ell}}$ as
+\begin{equation} \label{eq:loss_mainpaper}
+    \mathcal{L}_{n}(u, \mathcal{D}_n, \mathcal{H}_{\bm{\ell}}(\mathcal{X}), R) \overset{\Delta}{=} \sup_{{||f||}_{\mathcal{H}_{\bm{\ell}}(\mathcal{X})}\leq R}\mathbb{E}^u_f[f(\bm{x}^*_n) - \min f],
+\end{equation}
+where $n$ is the optimization iteration and $u$ a strategy. We focus on the strategy that maximizes \pei{}, the prior-weighted EI, and show that the loss in Equation \eqref{eq:loss_mainpaper} 
+%\frank{Eq. (23) is probably in the appendix. Should this refere to Eq. (7)?}
+can, at any iteration $n$, be bounded by the vanilla EI loss function. 
+We refer to $\text{EI}_{\pri, n}$ and $\text{EI}_{n}$ when we want to emphasize the iteration $n$ for the acquisition functions $\text{EI}_{\pri}$ and $\text{EI}$, respectively. 
+
+%PROOF SKETCH
+\begin{theorem} \label{th1}
+Given $\mathcal{D}_n$, $K_{\bm{\ell}}$, $\pri$, $\beta$, $\sigma$, ${\bm{\ell}}$, $R$ and the compact set $\mathcal{X}\subset\mathbb{R}^d$ as defined above, the loss $\mathcal{L}_{n}$ incurred at iteration $n$ by $\text{EI}_{\pri, n}$
+can be bounded from above as
+%Given $\mathcal{D}_n$, $K_{\bm{\ell}}$, $\pri$, $\sigma$, ${\bm{\ell}}$ and R, the loss $\mathcal{L}_{n}$ incurred at iteration $n$ by $\text{EI}_{\pri, n}$
+%%when considering the next design point $\bm{x}_{n+1}$ 
+% Given (everything metioned above) this, this and this that as defined above,  - BR is ball, n is iteration in BO
+%can be bounded from above as:
+%by the loss incurred by vanilla EI, multiplied by a factor that tends to 1 as $n\rightarrow \infty$:
+\begin{equation}
+    \mathcal{L}_{n}(\text{EI}_{\pri, n}, \mathcal{D}_n, \mathcal{H}_{\bm{\ell}}(\mathcal{X}), R) \leq C_{\pi, n} \mathcal{L}_{n}(\text{EI}_n, \mathcal{D}_n, \mathcal{H}_{\bm{\ell}}(\mathcal{X}), R), \quad C_{\pi, n} = \left(\frac{\max_{\xinx} \pi(\bm{x})}{\min_{\xinx} \pi(\bm{x})}\right)^{\beta/n}.
+\end{equation}
+\end{theorem}  
+
+Using Theorem \ref{th1}, we obtain the convergence rate of \pei{}. This trivially follows 
+%from the theorem 
+when considering the fraction of the losses in the limit and inserting the original convergence rate on EI as in \citet{JMLR:v12:bull11a}:
+
+\begin{corollary} The loss of a decaying prior-weighted Expected Improvement strategy, \pei{}, is asymptotically equal to the loss of an Expected Improvement strategy, EI:
+\begin{equation}
+    \mathcal{L}_{n}(\text{EI}_{\pri, n}, \mathcal{D}_n, \mathcal{H}_{\bm{\ell}}(\mathcal{X}), R) \sim  \mathcal{L}_{n}(\text{EI}_n, \mathcal{D}_n, \mathcal{H}_{\bm{\ell}}(\mathcal{X}), R),
+\end{equation}
+
+so we obtain a convergence rate for \pei{} of $\mathcal{L}_{n}(\text{EI}_{\pri, n}, \mathcal{D}_n, \mathcal{H}_{\bm{\ell}}(\mathcal{X}), R) = \mathcal{O}(n^{-(\nu \land 1)/d}(\log n)^\gamma)$.
+\end{corollary}
+
+Thus, we determine that the weighting introduced by \pei{} does not negatively impact the worst-case convergence rate. The short-term performance is controlled by the user in their choice of $\pri(\bm{x})$ and $\beta$. This result is coherent with intuition, as a weaker prior or quicker decay will yield a short-term performance closer to that of EI. In contrast, a stronger prior or slower decay does not guarantee the same short-term performance, but can produce better empirical results, as shown in Section~\ref{results}.
+
+\section{Results} \label{results} 
+We empirically demonstrate the efficiency of \method{} in three different settings. As \method{} is a general method to augment acquisition functions, it can be implemented in different parent BO packages, and the implementation in any given package inherits the pros and cons of that package. To minimize confounding factors concerning this choice of parent package, we keep comparisons within the methods in one package where possible and provide results in the other packages in Appendix~\ref{sec:competition}.
+In Sec.~\ref{toy_functions_experiments}, 
+using Spearmint as a parent package, 
+we evaluate \method against three intuitive baselines to assess its performance and robustness on priors with different qualities, ranging from very accurate to purposefully detrimental. To this end, we use toy functions and cheap surrogates, where priors of known quality can be obtained. 
+Next, in Sec.~\ref{mlp_experiments}, we compare \method{} against two competitive approaches (BOPrO and BOWS) that integrate priors over the optimum similarly to \method{}, using HyperMapper~\citep{nardi2019practical} as a parent framework, in which the most competitive baseline BOPrO is implemented. For these experiments we adopt a Multilayer Perceptron (MLP) benchmark on various datasets, using the interface provided by HPOBench \citep{eggensperger2021hpobench}, with priors constructed around the defaults provided by the library. 
+Lastly, in Sec.~\ref{deep_learning_experiments}, we apply \method and other approaches to two deep learning tasks, also using priors derived from publicly available defaults. 
+ Further, we demonstrate the flexibility of \method in Appendix~\ref{sec:other_fw}, where we evaluate \method in SMAC~\citep{smac,lindauer-arxiv21a} with random forests, as another framework with another surrogate model, and adapt it to use the UCB, TS and PI acquisition functions instead of EI.
+
+\subsection{Experimental Setup}
+
+
+
+\vspace*{-0.1cm}\paragraph{Priors}
+For our surrogate and toy function tasks,  we follow the prior construction methodology in BOPrO \citep{souza2021bayesian} and create three main types of prior qualities, all Gaussian: strong, weak and wrong. The strong and weak priors are located to have a high and moderate density on the optimum, respectively. The wrong prior is a narrow distribution located in the worst region of the search space. For the OpenML MLP tuning benchmark, we utilize the defaults and search spaces provided in HPOBench~\citep{eggensperger2021hpobench}, and construct Gaussian priors for each hyperparameter with their mean on the default value, and a standard deviation of 25\% of the hyperparameter's domain. For the DL case studies, we utilize defaults from each task's repository
+%, set search spaces for each hyperparameter, 
+and, for numerical hyperparameters, once again set the standard deviation to 25\% of the hyperparameter's domain. For categorical hyperparameters, we place a higher probability on the default. As such, the quality of the prior is ultimately unknown, but serves as a proxy for what a practitioner may choose and has shown to be a reasonable choice~\citep{AnastacioH20}. For all experiments, we run \method with $\beta = N/10$, where $N$ is the total number of iterations,
+%we run, 
+in order to make the prior influence approximately equal in all experiments, regardless of the number of allowed BO iterations. We investigate the sensitivity to $\beta$ in Appendix~\ref{sec:ablation_beta}, and the sensitivity to prior quality in Appendix~\ref{sec:ablation_prior}.
+
+\vspace*{-0.1cm}
+\paragraph{Baselines}
+We empirically evaluate \method against the most competitive approaches for priors over the optimum described in Section \ref{related}: BOPrO~\citep{souza2021bayesian} and BO in Warped Space (BOWS)~\citep{RAMACHANDRAN2020105663}. To contextualize the performance of \method{}, we provide additional, simpler baselines: random sampling, sampling from the prior and BO with prior-based initial design. The latter is initialized with the mode of the prior \textit{in addition} to its regular initial design. In our main results, we choose Spearmint (with EI)~\citep{snoek-nips12a} for this mode-initialized baseline, simply referring to it as Spearmint. See Appendix~\ref{sec:experiments_appendix} for complete details on the experiments.
+%\frank{Did we use the same value of $\beta$ across the different problems? We should definitely include an ablation study for $\beta$ in the appendix and point to it from here.}
+%\carl{Adrressed in intro, let me know what you think. Running $\beta=10N$ has been rather successful across the tasks I've been able to test, and has a pretty nice explore/exploit tradeoff wrt the prior}
+%\frank{OK, thanks.}
+\subsection{Robustness of \method}
+\label{toy_functions_experiments}
+First, we study the robustness of \method{}. To this end, we show that \method benefits from informative priors and can recover from wrong priors, being consistent with our theoretical results in Section~\ref{sec:theory}. 
+To this end, we consider a well-known black-box optimization function, Branin (2D), as well as two surrogate HPO tasks from the Profet suite \citep{profet}: FC-Net (6D) and XGBoost (8D). For these tasks, we exemplarily show results for \method{} implemented in the Spearmint framework.
+%
+As Figure \ref{fig:profet_results} shows, \method is able to quickly improve over sampling from the prior. Moreover, it improves substantially over Spearmint (with mode initialization) for all informative priors,
+%positive priors except for the weak prior on Branin,
+staying up to an order of magnitude ahead throughout the optimization for both strong and weak priors. For wrong priors, \method displays desired robustness by recovering to approximately equal regret as Spearmint. In contrast, Spearmint frequently fails to substantially improve from its initial design on the strong and weak prior, which demonstrates the importance of considering the prior throughout the optimization procedure. This effect is even more pronounced on the higher-dimensional tasks FCNet and XGBoost, where BO typically spends many iterations at the boundary~\citep{swersky2017improving}. Here, \method{} rapidly improves multiple orders of magnitude over the initial design, displaying its ability to efficiently exploit the information provided by the prior.
+%\frank{This entire paragraph does not mention Mode + Spearmint.}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{images/profet_branin_with_xgboost.png}
+    \caption{Comparison of \method{}, Spearmint, and two sampling approaches on Branin, FCNet and XGBoost for various prior strengths. Mean and standard error of log simple regret is displayed over 100 iterations, averaged over 20 runs. The vertical line represents the end of the initial design phase.}
+    \label{fig:profet_results}
+\end{figure}
+\subsection{Comparison of \method against other Prior-Guided Approaches}
+\label{mlp_experiments}
+Next, we study the performance of \method against other state-of-the-art prior-guided approaches.
+To this end, we consider optimizing 5 hyperparameters of an MLP for classification~\citep{eggensperger2021hpobench} on 6 different OpenML datasets~\citep{vanschoren-sigkdd13a} and compare against BOPrO~\citep{souza2021bayesian} and BOWS~\citep{RAMACHANDRAN2020105663}. For minimizing confounding factors, we implement \method{} and BOWS in HyperMapper~\citep{nardi2019practical}, the same framework that BOPrO runs on. Moreover, we let all approaches share \method{}'s initialization procedure. We consider a budget of 50 iterations as it is common with ML practitioners~\citep{bouthillier:survey}. In Figure~\ref{fig:mlp_results}, we see that \method{} offers the best performance on four out of six tasks, and displays the most consistent performance across tasks. In contrast to them BOWS and BOPrO, \method{} also comes with theoretical guarantees and is flexible in the choice of framework and acquisition function. 
+
+\begin{figure}[tbph]
+\centering
+    \includegraphics[width=\linewidth]{images/reorder_hpobench.png}
+    \caption{Comparison of \method{}, BOPrO, BOWS, and prior sampling for 5D MLP tuning on various OpenML datasets for a prior centered on default values. We show mean and standard error of the accuracy across 20 runs. The vertical line represents the end of the initial design phase.}
+    \label{fig:mlp_results}
+\end{figure}
+
+
+\subsection{Case Studies on Deep Learning Pipelines}
+\label{deep_learning_experiments}
+
+Last, we study the impact of \method{} on deep learning applications, which are often fairly expensive, making efficiency even more important than in HPO for traditional machine learning. 
+To this end, we consider two deep learning case studies: segmentation of neuronal processes in electron microscopy images with a U-Net(6D)~\citep{ronne2015unet}, with code provided from the NVIDIA deep learning examples repository \citep{nvidiaexamples}, and image classification on ImageNette-128 (6D) \citep{imagenette}, a light-weight adaptation of ImageNet~\citep{deng2009imagenet}, with code from the repository of the popular FastAI library~\citep{howard2018fastai}. We mimic the setup from Section \ref{mlp_experiments} by using the HyperMapper framework and identical initialization procedures across approaches. Gaussian priors are set on 
+publicly available default values, which are results of previous tuning efforts of the original authors. We again optimize for a practical budget of 50 iterations~\citep{bouthillier:survey}. As test splits for both tasks were not available to us, we report validation scores. 
+%Here, we consider the Spearmint implementation of \method{}.
+
+As shown in Figure~\ref{fig:cnn_results}, \method{} achieves a $2.5\times$ time-to-accuracy speedup over Vanilla BO. %However, it gets overtaken in the later iterations, possibly due to the amount of noise present in U-Net training. 
+For ImageNette, the performance of \method at iteration 4 already surpasses the performance of Vanilla BO at Iteration 50, demonstrating a $12.5\times$ time-to-accuracy speedup. Ultimately, \method's final performance establishes a new state-of-the-art validation performance on ImageNette with the provided pipeline, with a final accuracy of 94.14\% (vs. the previous state of the art with 93.55\%\footnote{ \url{https://github.com/fastai/imagenette\#imagenette-leaderboard}, 80 Epochs, 128 Resolution}). 
+%\luigi{Where can the reviewer find these SOTA performances? Can we please cite the relevant papers or leader boards here?}
+ 
+%   \frank{Please check the iteration number 4; I just read this from the plot}
+\begin{figure}[H]
+\centering
+    \includegraphics[width=0.8\linewidth]{images/dl_same_init.png}
+    \caption{Comparison of approaches for U-Net Medical and ImageNette-128 for a prior centered on default values. We show mean and standard error of the accuracy across 20 runs for U-Net Medical and 10 runs for ImageNette-128. The vertical line represents the end of the initial design phase.}
+    \label{fig:cnn_results}
+%\frank{In the plot, increase the size of the arrowhead a lot. Change ``Speed-up'' to ``speedup''. Move the text ``10x speedup'' to the white region between PiBo and BOPrO at iteration 10-20.}
+\end{figure}
+\section{Conclusion and Future Work}
+We presented \method, a conceptually very simple Bayesian optimization approach for leveraging user beliefs about the location of an optimum, which relies on a generalization of myopic acquisition functions. \method modifies the selection of design points through a decaying weighting scheme, promoting high-probability regions under the prior. Contrary to previous approaches, \method imposes only minor restrictions on the type of priors, surrogates or frameworks that can be used. \method provably converges at regular rates, displays state-of-the art performance across tasks, and effectively recovers from poorly specified priors. Moreover, we have demonstrated that \method can yield substantial performance gains for practical low-budget settings, improving on the state-of-the-art for a real-world CNN tuning tasks even with trivial choices for the prior. For practitioners who have historically relied on manual or grid search for HPO, we hope that \method will serve as an intuitive and effective tool for bridging the gap between traditional tuning methods and BO.
+
+\method sets the stage for several follow-up studies. Amongst others, we will examine the extension of \method{} to non-myopic acquisition functions, such as entropy-based methods. Non-myopic acquisition functions do not fit well in the current \method framework, as they do not necessarily benefit from evaluating inputs expected to perform well.
+%While arguably superior, 
+%their objective of minimizing the differential entropy is ill-suited for the weighting scheme that \method entails.
+%\danny{this is currently broken}
+We will also combine \method{} with multi-fidelity optimization methods to yield even higher speedups, and with multi-objective optimization to jointly optimize performance and secondary objective functions, such as interpretability or fairness of models.
+
+\section{Ethics Statement} \label{sec:impact}
+
+Our work proposes an acquisition function generalization which incorporates prior beliefs about the location of the optimum into optimization. The approach is foundational and thus will not bring direct societal or ethical consequences. However, \method will likely be used in the development of applications for a wide range of areas and thus indirectly contribute to their impacts on society. In particular, we envision that \method will impact a multitude of fields by allowing ML experts to inject their knowledge about the location of the optimum into Bayesian Optimization.
+
+We also note that we intend for \method to be a tool that allows users to assist Bayesian Optimization by providing reasonable prior knowledge and beliefs. This process induces user bias into the optimization, as \method will inevitably start by optimizing around this prior. As some users may only be interested in optimizing in the direct neighborhood of their prior, \method{} could allow them to do so if provided with a high $\beta$ value in relation to the number of iterations. Thus, if improperly specified, \method could serve to reinforce user's beliefs by providing improved solutions only for the user's region of interest. However, if used properly, \method{} will reduce the computational resources required to find strong hyperparameter settings, contributing to the sustainability of machine learning.
+
+\section{Reproducibility}
+In order to make the experiments run in \method{} as reproducible as possible, we have included links to repositories of our implementations in both Spearmint and HyperMapper, with instructions on how to run our experiments. Moreover, we have included in said repositories all of the exact priors that we have used for our runs, which run out of the box. The priors we used were, in our opinion, well motivated as to avoid subjectivity, which we hope serves as a good frame of reference for similar works in the future. Specifically, Appendix~\ref{deep_learning_experiments} describes how we ran our DL experiments, Appendix~\ref{sec:implementation} goes into the implementation in further detail, and Appendix~\ref{sec:priors} displays the exact priors for all our experiments and prior strengths. Our Spearmint implementation of both \method{} and BOWS is available at \url{https://github.com/piboauthors/PiBO-Spearmint}, and our HyperMapper implementation is available at \url{https://github.com/piboauthors/PiBO-Hypermapper}. For our results on the convergence of \method, we have provided a complete proof in Appendix~\ref{sec:appendix_proof}.
+
+\section{Acknowledgements}
+Luigi Nardi was supported in part by affiliate members and other supporters of the Stanford DAWN project — Ant Financial, Facebook, Google, Intel, Microsoft, NEC, SAP, Teradata, and VMware. Carl Hvarfner and Luigi Nardi were partially supported by the Wallenberg AI, Autonomous Systems and Software Program (WASP) funded by the Knut and Alice Wallenberg Foundation. Artur Souza was supported by CAPES, CNPq, and FAPEMIG. Frank Hutter acknowledges support by the European Research Council (ERC) under the European Union Horizon 2020 research and innovation programme through grant no.\ 716721, through TAILOR, a project funded by the EU Horizon 2020 research and innovation programme under GA No 952215, by the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) under grant number 417962828 and by the state of Baden-W\"{u}rttemberg through bwHPC and the German Research Foundation (DFG) through grant no INST 39/963-1 FUGG. Marius Lindauer acknowledges support by the European Research Council (ERC) under the Europe Horizon programme. The computations were also enabled by resources provided by the Swedish National Infrastructure for Computing (SNIC) at LUNARC partially funded by the Swedish Research Council through grant agreement no. 2018-05973.
+\bibliographystyle{iclr2022_conference}
+\bibliography{bibliography/local,bibliography/lib,bibliography/proc,bibliography/strings}
+
+\appendix
+\include{appendix}
+
+
+\end{document}

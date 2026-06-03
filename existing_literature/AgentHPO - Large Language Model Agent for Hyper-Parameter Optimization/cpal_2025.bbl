@@ -1,0 +1,254 @@
+\begin{thebibliography}{48}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[LeCun et~al.(2015)LeCun, Bengio, and Hinton]{lecun2015deep}
+Yann LeCun, Yoshua Bengio, and Geoffrey Hinton.
+\newblock Deep learning.
+\newblock \emph{nature}, 521\penalty0 (7553):\penalty0 436--444, 2015.
+
+\bibitem[Melis et~al.(2018)Melis, Dyer, and Blunsom]{melis2018state}
+G{\'a}bor Melis, Chris Dyer, and Phil Blunsom.
+\newblock On the state of the art of evaluation in neural language models.
+\newblock In \emph{International Conference on Learning Representations}, 2018.
+
+\bibitem[Yu and Zhu(2020)]{yu2020hyper}
+Tong Yu and Hong Zhu.
+\newblock Hyper-parameter optimization: A review of algorithms and applications.
+\newblock \emph{arXiv preprint arXiv:2003.05689}, 2020.
+
+\bibitem[Yang and Shami(2020)]{yang2020hyperparameter}
+Li~Yang and Abdallah Shami.
+\newblock On hyperparameter optimization of machine learning algorithms: Theory and practice.
+\newblock \emph{Neurocomputing}, 415:\penalty0 295--316, 2020.
+
+\bibitem[Mallik et~al.(2023)Mallik, Bergman, Hvarfner, Stoll, Janowski, Lindauer, Nardi, and Hutter]{mallik-neurips23a}
+N.~Mallik, E.~Bergman, C.~Hvarfner, D.~Stoll, M.~Janowski, M.~Lindauer, L.~Nardi, and F.~Hutter.
+\newblock Priorband: Practical hyperparameter optimization in the age of deep learning.
+\newblock In \emph{Thirty-seventh Conference on Neural Information Processing Systems}, 2023.
+\newblock URL \url{https://openreview.net/forum?id=uoiwugtpCH}.
+
+\bibitem[Hutter et~al.(2019)Hutter, Kotthoff, and Vanschoren]{hutter2019automated}
+Frank Hutter, Lars Kotthoff, and Joaquin Vanschoren.
+\newblock \emph{Automated machine learning: methods, systems, challenges}.
+\newblock Springer Nature, 2019.
+
+\bibitem[Shahriari et~al.(2015)Shahriari, Swersky, Wang, Adams, and De~Freitas]{shahriari2015taking}
+Bobak Shahriari, Kevin Swersky, Ziyu Wang, Ryan~P Adams, and Nando De~Freitas.
+\newblock Taking the human out of the loop: A review of bayesian optimization.
+\newblock \emph{Proceedings of the IEEE}, 104\penalty0 (1):\penalty0 148--175, 2015.
+
+\bibitem[Tornede et~al.(2023)Tornede, Deng, Eimer, Giovanelli, Mohan, Ruhkopf, Segel, Theodorakopoulos, Tornede, Wachsmuth, et~al.]{tornede2023automl}
+Alexander Tornede, Difan Deng, Theresa Eimer, Joseph Giovanelli, Aditya Mohan, Tim Ruhkopf, Sarah Segel, Daphne Theodorakopoulos, Tanja Tornede, Henning Wachsmuth, et~al.
+\newblock Automl in the age of large language models: Current challenges, future opportunities and risks.
+\newblock \emph{arXiv preprint arXiv:2306.08107}, 2023.
+
+\bibitem[Wistuba et~al.(2015)Wistuba, Schilling, and Schmidt-Thieme]{wistuba2015hyperparameter}
+Martin Wistuba, Nicolas Schilling, and Lars Schmidt-Thieme.
+\newblock Hyperparameter search space pruning--a new component for sequential model-based hyperparameter optimization.
+\newblock In \emph{Machine Learning and Knowledge Discovery in Databases: European Conference, ECML PKDD 2015, Porto, Portugal, September 7-11, 2015, Proceedings, Part II 15}, pages 104--119. Springer, 2015.
+
+\bibitem[Gilpin et~al.(2018)Gilpin, Bau, Yuan, Bajwa, Specter, and Kagal]{gilpin2018explaining}
+Leilani~H Gilpin, David Bau, Ben~Z Yuan, Ayesha Bajwa, Michael Specter, and Lalana Kagal.
+\newblock Explaining explanations: An overview of interpretability of machine learning.
+\newblock In \emph{2018 IEEE 5th International Conference on data science and advanced analytics (DSAA)}, pages 80--89. IEEE, 2018.
+
+\bibitem[Moosbauer et~al.(2022)Moosbauer, Casalicchio, Lindauer, and Bischl]{moosbauer2022enhancing}
+Julia Moosbauer, Giuseppe Casalicchio, Marius Lindauer, and Bernd Bischl.
+\newblock Enhancing explainability of hyperparameter optimization via bayesian algorithm execution.
+\newblock \emph{arXiv preprint arXiv:2206.05447}, 2022.
+
+\bibitem[Hasebrook et~al.(2022)Hasebrook, Morsbach, Kannengie{\ss}er, Franke, Hutter, and Sunyaev]{hasebrook2022machine}
+Niklas Hasebrook, Felix Morsbach, Niclas Kannengie{\ss}er, J{\"o}rg Franke, Frank Hutter, and Ali Sunyaev.
+\newblock Why do machine learning practitioners still use manual tuning? a qualitative study.
+\newblock \emph{arXiv preprint arXiv:2203.01717}, 2022.
+
+\bibitem[OpenAI(2023)]{openai2023gpt4}
+OpenAI.
+\newblock Gpt-4 technical report, 2023.
+
+\bibitem[Bubeck et~al.(2023)Bubeck, Chandrasekaran, Eldan, Gehrke, Horvitz, Kamar, Lee, Lee, Li, Lundberg, et~al.]{bubeck2023sparks}
+S{\'e}bastien Bubeck, Varun Chandrasekaran, Ronen Eldan, Johannes Gehrke, Eric Horvitz, Ece Kamar, Peter Lee, Yin~Tat Lee, Yuanzhi Li, Scott Lundberg, et~al.
+\newblock Sparks of artificial general intelligence: Early experiments with gpt-4.
+\newblock \emph{arXiv preprint arXiv:2303.12712}, 2023.
+
+\bibitem[Hong et~al.(2023)Hong, Zheng, Chen, Cheng, Wang, Zhang, Wang, Yau, Lin, Zhou, et~al.]{hong2023metagpt}
+Sirui Hong, Xiawu Zheng, Jonathan Chen, Yuheng Cheng, Jinlin Wang, Ceyao Zhang, Zili Wang, Steven Ka~Shing Yau, Zijuan Lin, Liyang Zhou, et~al.
+\newblock Metagpt: Meta programming for multi-agent collaborative framework.
+\newblock \emph{arXiv preprint arXiv:2308.00352}, 2023.
+
+\bibitem[Park et~al.(2023)Park, O'Brien, Cai, Morris, Liang, and Bernstein]{park2023generative}
+Joon~Sung Park, Joseph O'Brien, Carrie~Jun Cai, Meredith~Ringel Morris, Percy Liang, and Michael~S Bernstein.
+\newblock Generative agents: Interactive simulacra of human behavior.
+\newblock In \emph{Proceedings of the 36th Annual ACM Symposium on User Interface Software and Technology}, pages 1--22, 2023.
+
+\bibitem[Wang et~al.(2023)Wang, Xie, Jiang, Mandlekar, Xiao, Zhu, Fan, and Anandkumar]{wang2023voyager}
+Guanzhi Wang, Yuqi Xie, Yunfan Jiang, Ajay Mandlekar, Chaowei Xiao, Yuke Zhu, Linxi Fan, and Anima Anandkumar.
+\newblock Voyager: An open-ended embodied agent with large language models.
+\newblock \emph{arXiv preprint arXiv:2305.16291}, 2023.
+
+\bibitem[Boiko et~al.(2023)Boiko, MacKnight, Kline, and Gomes]{boiko2023autonomous}
+Daniil~A Boiko, Robert MacKnight, Ben Kline, and Gabe Gomes.
+\newblock Autonomous chemical research with large language models.
+\newblock \emph{Nature}, 624\penalty0 (7992):\penalty0 570--578, 2023.
+
+\bibitem[Zhang et~al.(2023{\natexlab{a}})Zhang, Gong, Wu, Liu, and Zhou]{zhang2023automl}
+Shujian Zhang, Chengyue Gong, Lemeng Wu, Xingchao Liu, and Mingyuan Zhou.
+\newblock Automl-gpt: Automatic machine learning with gpt.
+\newblock \emph{arXiv preprint arXiv:2305.02499}, 2023{\natexlab{a}}.
+
+\bibitem[Zhang et~al.(2023{\natexlab{b}})Zhang, Zhang, Ren, Li, and Yang]{zhang2023mlcopilot}
+Lei Zhang, Yuge Zhang, Kan Ren, Dongsheng Li, and Yuqing Yang.
+\newblock Mlcopilot: Unleashing the power of large language models in solving machine learning tasks.
+\newblock \emph{arXiv preprint arXiv:2304.14979}, 2023{\natexlab{b}}.
+
+\bibitem[Hollmann et~al.(2023)Hollmann, M{\"u}ller, and Hutter]{hollmann2023large}
+Noah Hollmann, Samuel M{\"u}ller, and Frank Hutter.
+\newblock Large language models for automated data science: Introducing caafe for context-aware automated feature engineering.
+\newblock In \emph{Thirty-seventh Conference on Neural Information Processing Systems}, 2023.
+
+\bibitem[Chen et~al.(2023)Chen, Dohan, and So]{chen2023evoprompting}
+Angelica Chen, David Dohan, and David So.
+\newblock Evoprompting: Language models for code-level neural architecture search.
+\newblock In \emph{Thirty-seventh Conference on Neural Information Processing Systems}, 2023.
+\newblock URL \url{https://openreview.net/forum?id=ifbF4WdT8f}.
+
+\bibitem[Wei et~al.(2023)Wei, He, Zhao, and Yao]{wei2023unleashing}
+Lanning Wei, Zhiqiang He, Huan Zhao, and Quanming Yao.
+\newblock Unleashing the power of graph learning through llm-based autonomous agents.
+\newblock \emph{arXiv preprint arXiv:2309.04565}, 2023.
+
+\bibitem[Huang et~al.(2023)Huang, Vora, Liang, and Leskovec]{huang2023benchmarking}
+Qian Huang, Jian Vora, Percy Liang, and Jure Leskovec.
+\newblock Benchmarking large language models as ai research agents.
+\newblock \emph{arXiv preprint arXiv:2310.03302}, 2023.
+
+\bibitem[Chen et~al.(2022)Chen, Song, Lee, Wang, Zhang, Dohan, Kawakami, Kochanski, Doucet, Ranzato, et~al.]{chen2022towards}
+Yutian Chen, Xingyou Song, Chansoo Lee, Zi~Wang, Richard Zhang, David Dohan, Kazuya Kawakami, Greg Kochanski, Arnaud Doucet, Marc'aurelio Ranzato, et~al.
+\newblock Towards learning universal hyperparameter optimizers with transformers.
+\newblock \emph{Advances in Neural Information Processing Systems}, 35:\penalty0 32053--32068, 2022.
+
+\bibitem[Yang et~al.(2023)Yang, Wang, Lu, Liu, Le, Zhou, and Chen]{yang2023large}
+Chengrun Yang, Xuezhi Wang, Yifeng Lu, Hanxiao Liu, Quoc~V Le, Denny Zhou, and Xinyun Chen.
+\newblock Large language models as optimizers.
+\newblock \emph{arXiv preprint arXiv:2309.03409}, 2023.
+
+\bibitem[Zhang et~al.(2023{\natexlab{c}})Zhang, Desai, Bae, Lorraine, and Ba]{zhang2023using}
+Michael~R Zhang, Nishkrit Desai, Juhan Bae, Jonathan Lorraine, and Jimmy Ba.
+\newblock Using large language models for hyperparameter optimization.
+\newblock In \emph{NeurIPS 2023 Foundation Models for Decision Making Workshop}, 2023{\natexlab{c}}.
+
+\bibitem[Krizhevsky et~al.(2009)Krizhevsky, Hinton, et~al.]{krizhevsky2009learning}
+Alex Krizhevsky, Geoffrey Hinton, et~al.
+\newblock Learning multiple layers of features from tiny images.
+\newblock 2009.
+
+\bibitem[He et~al.(2016)He, Zhang, Ren, and Sun]{he2016deep}
+Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun.
+\newblock Deep residual learning for image recognition.
+\newblock In \emph{Proceedings of the IEEE conference on computer vision and pattern recognition}, pages 770--778, 2016.
+
+\bibitem[DePie(2023)]{DePie_2023}
+DePie.
+\newblock Butterfly image classification, Jun 2023.
+\newblock URL \url{https://www.kaggle.com/datasets/phucthaiv02/butterfly-image-classification}.
+
+\bibitem[Cordts et~al.(2016)Cordts, Omran, Ramos, Rehfeld, Enzweiler, Benenson, Franke, Roth, and Schiele]{Cordts2016Cityscapes}
+Marius Cordts, Mohamed Omran, Sebastian Ramos, Timo Rehfeld, Markus Enzweiler, Rodrigo Benenson, Uwe Franke, Stefan Roth, and Bernt Schiele.
+\newblock The cityscapes dataset for semantic urban scene understanding.
+\newblock In \emph{Proc. of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}, 2016.
+
+\bibitem[Paszke et~al.(2016)Paszke, Chaurasia, Kim, and Culurciello]{paszke2016enet}
+Adam Paszke, Abhishek Chaurasia, Sangpil Kim, and Eugenio Culurciello.
+\newblock Enet: A deep neural network architecture for real-time semantic segmentation.
+\newblock \emph{arXiv preprint arXiv:1606.02147}, 2016.
+
+\bibitem[Shahane(2023)]{Shahane_2023}
+Saurabh Shahane.
+\newblock Ecommerce text classification, Oct 2023.
+\newblock URL \url{https://www.kaggle.com/datasets/saurabhshahane/ecommerce-text-classification/data}.
+
+\bibitem[Sanh et~al.(2019)Sanh, Debut, Chaumond, and Wolf]{Sanh2019DistilBERTAD}
+Victor Sanh, Lysandre Debut, Julien Chaumond, and Thomas Wolf.
+\newblock Distilbert, a distilled version of bert: smaller, faster, cheaper and lighter.
+\newblock \emph{ArXiv}, abs/1910.01108, 2019.
+
+\bibitem[Socher et~al.(2013)Socher, Perelygin, Wu, Chuang, Manning, Ng, and Potts]{socher-etal-2013-recursive}
+Richard Socher, Alex Perelygin, Jean Wu, Jason Chuang, Christopher~D. Manning, Andrew Ng, and Christopher Potts.
+\newblock Recursive deep models for semantic compositionality over a sentiment treebank.
+\newblock In \emph{Proceedings of the 2013 Conference on Empirical Methods in Natural Language Processing}, pages 1631--1642, Seattle, Washington, USA, October 2013. Association for Computational Linguistics.
+\newblock URL \url{https://www.aclweb.org/anthology/D13-1170}.
+
+\bibitem[Zhang et~al.(2020)Zhang, Williams, Titov, and Sennrich]{zhang2020improving}
+Biao Zhang, Philip Williams, Ivan Titov, and Rico Sennrich.
+\newblock Improving massively multilingual neural machine translation and zero-shot translation.
+\newblock In \emph{Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics}, pages 1628--1639, 2020.
+
+\bibitem[Raffel et~al.(2020)Raffel, Shazeer, Roberts, Lee, Narang, Matena, Zhou, Li, and Liu]{2020t5}
+Colin Raffel, Noam Shazeer, Adam Roberts, Katherine Lee, Sharan Narang, Michael Matena, Yanqi Zhou, Wei Li, and Peter~J. Liu.
+\newblock Exploring the limits of transfer learning with a unified text-to-text transformer.
+\newblock \emph{Journal of Machine Learning Research}, 21\penalty0 (140):\penalty0 1--67, 2020.
+\newblock URL \url{http://jmlr.org/papers/v21/20-074.html}.
+
+\bibitem[Harper and Konstan(2015)]{10.1145/2827872}
+F.~Maxwell Harper and Joseph~A. Konstan.
+\newblock The movielens datasets: History and context.
+\newblock \emph{ACM Trans. Interact. Intell. Syst.}, 5\penalty0 (4), dec 2015.
+\newblock ISSN 2160-6455.
+\newblock \doi{10.1145/2827872}.
+\newblock URL \url{https://doi.org/10.1145/2827872}.
+
+\bibitem[He et~al.(2020)He, Deng, Wang, Li, Zhang, and Wang]{he2020lightgcn}
+Xiangnan He, Kuan Deng, Xiang Wang, Yan Li, Yongdong Zhang, and Meng Wang.
+\newblock Lightgcn: Simplifying and powering graph convolution network for recommendation.
+\newblock In \emph{Proceedings of the 43rd International ACM SIGIR conference on research and development in Information Retrieval}, pages 639--648, 2020.
+
+\bibitem[Guo et~al.(2017)Guo, Tang, Ye, Li, and He]{guo2017deepfm}
+Huifeng Guo, Ruiming Tang, Yunming Ye, Zhenguo Li, and Xiuqiang He.
+\newblock Deepfm: a factorization-machine based neural network for ctr prediction.
+\newblock In \emph{Proceedings of the 26th International Joint Conference on Artificial Intelligence}, pages 1725--1731, 2017.
+
+\bibitem[Tharmalingam(2023)]{Tharmalingam_2023}
+Laksika Tharmalingam.
+\newblock Water quality and potability, Sep 2023.
+\newblock URL \url{https://www.kaggle.com/datasets/uom190346a/water-quality-and-potability}.
+
+\bibitem[Chen and Guestrin(2016)]{chen2016xgboost}
+Tianqi Chen and Carlos Guestrin.
+\newblock Xgboost: A scalable tree boosting system.
+\newblock In \emph{Proceedings of the 22nd acm sigkdd international conference on knowledge discovery and data mining}, pages 785--794, 2016.
+
+\bibitem[Imran(2023)]{Imran_2023}
+Muhammad~Bin Imran.
+\newblock Housing price prediction data, Nov 2023.
+\newblock URL \url{https://www.kaggle.com/datasets/muhammadbinimran/housing-price-prediction-data}.
+
+\bibitem[Sen et~al.(2008)Sen, Namata, Bilgic, Getoor, Galligher, and Eliassi-Rad]{sen2008collective}
+Prithviraj Sen, Galileo Namata, Mustafa Bilgic, Lise Getoor, Brian Galligher, and Tina Eliassi-Rad.
+\newblock Collective classification in network data.
+\newblock \emph{AI magazine}, 29\penalty0 (3):\penalty0 93--93, 2008.
+
+\bibitem[Kipf and Welling(2016{\natexlab{a}})]{kipf2016semi}
+Thomas~N Kipf and Max Welling.
+\newblock Semi-supervised classification with graph convolutional networks.
+\newblock In \emph{International Conference on Learning Representations}, 2016{\natexlab{a}}.
+
+\bibitem[Kipf and Welling(2016{\natexlab{b}})]{kipf2016variational}
+Thomas~N Kipf and Max Welling.
+\newblock Variational graph auto-encoders.
+\newblock \emph{NIPS Workshop on Bayesian Deep Learning}, 2016{\natexlab{b}}.
+
+\bibitem[Liao et~al.(2022)Liao, Li, Shang, and Ma]{liao2022empirical}
+Lizhi Liao, Heng Li, Weiyi Shang, and Lei Ma.
+\newblock An empirical study of the impact of hyperparameter tuning and model optimization on the performance properties of deep neural networks.
+\newblock \emph{ACM Transactions on Software Engineering and Methodology (TOSEM)}, 31\penalty0 (3):\penalty0 1--40, 2022.
+
+\bibitem[Liu et~al.(2024)Liu, Wang, Vaidya, Ruehle, Halverson, Solja{\v{c}}i{\'c}, Hou, and Tegmark]{liu2024kan}
+Ziming Liu, Yixuan Wang, Sachin Vaidya, Fabian Ruehle, James Halverson, Marin Solja{\v{c}}i{\'c}, Thomas~Y Hou, and Max Tegmark.
+\newblock Kan: Kolmogorov-arnold networks.
+\newblock \emph{arXiv preprint arXiv:2404.19756}, 2024.
+
+\end{thebibliography}

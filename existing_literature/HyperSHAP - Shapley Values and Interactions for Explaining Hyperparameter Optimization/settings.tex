@@ -1,0 +1,105 @@
+%\usepackage[hidelinks,colorlinks=true,citecolor=blue!50!black,linkcolor=black,urlcolor=green!50!black]{hyperref}
+\usepackage{url}
+\usepackage{amsmath,amsfonts,amssymb,amsthm}
+\usepackage{graphicx}
+
+\usepackage{xspace}
+
+% DISALLOWED PACKAGES
+% \usepackage{authblk} -- This package is specifically forbidden
+% \usepackage{balance} -- This package is specifically forbidden
+% \usepackage{color (if used in text)
+% \usepackage{CJK} -- This package is specifically forbidden
+% \usepackage{float} -- This package is specifically forbidden
+% \usepackage{flushend} -- This package is specifically forbidden
+% \usepackage{fontenc} -- This package is specifically forbidden
+% \usepackage{fullpage} -- This package is specifically forbidden
+% \usepackage{geometry} -- This package is specifically forbidden
+% \usepackage{grffile} -- This package is specifically forbidden
+% \usepackage{hyperref} -- This package is specifically forbidden
+% \usepackage{navigator} -- This package is specifically forbidden
+% (or any other package that embeds links such as navigator or hyperref)
+% \indentfirst} -- This package is specifically forbidden
+% \layout} -- This package is specifically forbidden
+% \multicol} -- This package is specifically forbidden
+% \nameref} -- This package is specifically forbidden
+% \usepackage{savetrees} -- This package is specifically forbidden
+% \usepackage{setspace} -- This package is specifically forbidden
+% \usepackage{stfloats} -- This package is specifically forbidden
+% \usepackage{tabu} -- This package is specifically forbidden
+% \usepackage{titlesec} -- This package is specifically forbidden
+% \usepackage{tocbibind} -- This package is specifically forbidden
+% \usepackage{ulem} -- This package is specifically forbidden
+% \usepackage{wrapfig} -- This package is specifically forbidden
+% DISALLOWED COMMANDS
+% \nocopyright -- Your paper will not be published if you use this command
+% \addtolength -- This command may not be used
+% \balance -- This command may not be used
+% \baselinestretch -- Your paper will not be published if you use this command
+% \clearpage -- No page breaks of any kind may be used for the final version of your paper
+% \columnsep -- This command may not be used
+% \newpage -- No page breaks of any kind may be used for the final version of your paper
+% \pagebreak -- No page breaks of any kind may be used for the final version of your paperr
+% \pagestyle -- This command may not be used
+% \tiny -- This is not an acceptable font size.
+% \vspace{- -- No negative value may be used in proximity of a caption, figure, table, section, subsection, subsubsection, or reference
+% \vskip{- -- No negative value may be used to alter spacing above or below a caption, figure, table, section, subsection, subsubsection, or reference
+
+\usepackage[labelfont=bf]{caption}
+\usepackage{enumitem}
+\usepackage{multirow}
+\usepackage{placeins}
+\usepackage{rotating}
+\usepackage{stackengine}
+\usepackage{tabularx}
+\usepackage{titletoc} 
+\usepackage{booktabs}
+
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+
+
+%glossary
+\usepackage[acronym]{glossaries}
+\newacronym{SV}{SV}{Shapley Value}
+\newacronym{SII}{SII}{Shapley Interaction Index}
+\newacronym{k-SII}{$k$-SII}{$k$-Shapley Value}
+\newacronym{SI}{SI}{Shapley Interaction}
+\newacronym{MI}{MI}{Möbius Interaction}
+\newacronym{STII}{STII}{Shapley Taylor Interaction Index}
+\newacronym{FSII}{FSII}{Faithful Shapley Interaction Index}
+
+% Commands for fixing margins
+\newcommand{\fix}{\marginpar{FIX}}
+\newcommand{\new}{\marginpar{NEW}}
+
+% Commands for mathematical notation
+\newcommand{\cX}{\mathcal{X}}
+\newcommand{\cY}{\mathcal{Y}}
+\newcommand{\cH}{\mathcal{H}}
+\renewcommand{\vec}[1]{\boldsymbol{#1}}
+\newcommand{\cN}{\mathcal{N}}
+
+% math notation
+%\newtheorem{definition}{Definition}
+
+% Optional math commands from https://github.com/goodfeli/dlbook_notation.
+\input{math_commands}
+
+\usepackage{cleveref}
+\crefname{equation}{Eq.}{Eqs.}
+\crefname{figure}{Fig.}{Figs.}
+\crefname{tabular}{Tab.}{Tabs.}
+\crefname{section}{Sec.}{Secs.}
+\crefname{appendix}{Apx.}{Apxs.}
+\crefname{table}{Tab.}{Tabs.}
+\crefname{theorem}{Thm.}{Thms.}
