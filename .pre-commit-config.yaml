@@ -1,0 +1,58 @@
+repos:
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.2.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args: []
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: "v0.11.0"
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+      - id: ruff-format
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+        exclude: '\.svg$'
+      - id: fix-encoding-pragma
+        args: [--remove]
+      - id: check-yaml
+      - id: debug-statements
+        language_version: python3
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.5.0
+    hooks:
+      - id: nbstripout
+        files: \.(ipynb)$
+        args: [--keep-output, --strip-empty-cells]
+  - repo: https://github.com/nikaro/taplo-pre-commit
+    rev: 0.1.1
+    hooks:
+      - id: taplo-format
+        name: Format TOML files
+        args: ["--config", "taplo.toml"]
+      - id: taplo-lint
+        name: Lint TOML files
+        args: ["--config", "taplo.toml"]
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.38.0
+    hooks:
+      - id: markdownlint
+        args: ["--config", ".markdownlint.json"]
+        exclude: ^\.claude/
+  - repo: https://github.com/zizmorcore/zizmor-pre-commit
+    rev: v1.25.2
+    hooks:
+      - id: zizmor
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        language: system
+        entry: uv run pytest --cov=holmes --cov-report=xml --cov-branch tests
+        types: [python]
+        pass_filenames: false
+        files: ^holmes/
