@@ -223,16 +223,31 @@ def _preprocess_one(category: str, out_dir: Path, args: argparse.Namespace) -> N
 
 
 def _cmd_preprocess(args: argparse.Namespace) -> None:
-    if args.all:
-        if args.source is not None:
-            raise SystemExit("--source names one category's file and cannot be combined with --all.")
-        if args.out is not None:
-            raise SystemExit("--out cannot be combined with --all; each category writes to data/processed/<category>.")
-        for category in AMAZON_CATEGORIES:
-            _preprocess_one(category, PROCESSED_DIR / category, args)
+    if not args.all:
+        out_dir = args.out if args.out is not None else PROCESSED_DIR / args.category
+        _preprocess_one(args.category, out_dir, args)
         return
-    out_dir = args.out if args.out is not None else PROCESSED_DIR / args.category
-    _preprocess_one(args.category, out_dir, args)
+
+    if args.source is not None:
+        raise SystemExit("--source names one category's file and cannot be combined with --all.")
+    if args.out is not None:
+        raise SystemExit("--out cannot be combined with --all; each category writes to data/processed/<category>.")
+
+    # Batch mode: a single failing category (a transient HF download error, or a k-core that empties
+    # the matrix) must not discard the categories already built or skip the ones after it. Isolate
+    # each build, then summarize — exiting non-zero if any failed so a calling script can tell.
+    failures: list[str] = []
+    for category in AMAZON_CATEGORIES:
+        try:
+            _preprocess_one(category, PROCESSED_DIR / category, args)
+        except Exception as exc:  # noqa: BLE001 - batch resilience: record this category, continue, summarize below
+            print(f"FAILED {category}: {exc}")
+            failures.append(category)
+
+    print(f"Preprocessed {len(AMAZON_CATEGORIES) - len(failures)}/{len(AMAZON_CATEGORIES)} categories.")
+    if failures:
+        msg = f"{len(failures)} of {len(AMAZON_CATEGORIES)} categories failed: {', '.join(failures)}"
+        raise SystemExit(msg)
 
 
 def _cmd_grid(args: argparse.Namespace) -> None:

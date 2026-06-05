@@ -1,6 +1,7 @@
 """Tests for the CLI argument parser."""
 
 import argparse
+import functools
 import json
 from pathlib import Path
 
@@ -9,6 +10,18 @@ import pytest
 from holmes.cli import _build_iter_spec, _build_parser, _cmd_eval, _cmd_heuristic, _cmd_preprocess, _cmd_ranges
 from holmes.config import HOLMES_SPACE, MAX_ITERATIONS
 from holmes.data.preprocess import AMAZON_CATEGORIES
+
+
+def _build_or_fail(*, category, fail, dataset, **_):
+    """build_dataset stand-in that raises for the ``fail`` category and returns ``dataset`` otherwise.
+
+    Module-scope (not a closure) so ``fail``/``dataset`` are passed explicitly via ``functools.partial``,
+    keeping with the no-nested-def rule.
+    """
+    if category == fail:
+        msg = f"k-core emptied the {category} matrix"
+        raise ValueError(msg)
+    return dataset
 
 
 def _iter_namespace(**overrides):
@@ -184,18 +197,31 @@ class TestCmdPreprocess:
 
     def test_all_preprocesses_every_category_into_its_own_dir(self, books_dataset, tmp_path, monkeypatch):
         monkeypatch.setattr("holmes.cli.PROCESSED_DIR", tmp_path)
-        seen: list[str] = []
-        monkeypatch.setattr(
-            "holmes.cli.build_dataset",
-            lambda *, category, **_: seen.append(category) or books_dataset,
-        )
+        monkeypatch.setattr("holmes.cli.build_dataset", lambda **_: books_dataset)
         args = _build_parser().parse_args(["preprocess", "--all"])
 
         _cmd_preprocess(args)
 
-        assert seen == list(AMAZON_CATEGORIES)
+        # Every category produced its own dataset directory (verified on disk, not via a call log).
+        produced = sorted(p.name for p in tmp_path.iterdir() if p.is_dir())
+        assert produced == sorted(AMAZON_CATEGORIES)
         assert (tmp_path / "Books" / "meta.json").exists()
-        assert (tmp_path / "Video_Games" / "meta.json").exists()
+
+    def test_all_continues_past_a_failing_category(self, books_dataset, tmp_path, monkeypatch):
+        """One category raising must not abort the batch: the rest still build, then a summary exits non-zero."""
+        monkeypatch.setattr("holmes.cli.PROCESSED_DIR", tmp_path)
+        monkeypatch.setattr(
+            "holmes.cli.build_dataset",
+            functools.partial(_build_or_fail, fail="Books", dataset=books_dataset),
+        )
+        args = _build_parser().parse_args(["preprocess", "--all"])
+
+        with pytest.raises(SystemExit, match="1 of 34 categories failed: Books"):
+            _cmd_preprocess(args)
+
+        produced = {p.name for p in tmp_path.iterdir() if p.is_dir()}
+        assert "Books" not in produced  # the failing category wrote nothing
+        assert produced == set(AMAZON_CATEGORIES) - {"Books"}  # all 33 others still built
 
     def test_all_rejects_out(self):
         args = _build_parser().parse_args(["preprocess", "--all", "--out", "x"])
