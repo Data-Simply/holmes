@@ -1,20 +1,35 @@
 [project]
 name = "agentic-hpo-in-the-loop"
 version = "0.1.0"
-description = "Agentic Hyperparameterization with an Agent in the Loop"
+description = "HOLMES: Hypothesis-driven Optimization via LLM-guided Model Exploration and Search"
 readme = "README.md"
 authors = [
-    { name = "Murray Vanwyk", email = "murray@datasimply.co" }
+    { name = "Murray Vanwyk", email = "murray@datasimply.co" },
+    { name = "Vasilis Papastefanopoulos", email = "vas@datasimply.co" }
 ]
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "huggingface-hub>=1.17.0",
+    "implicit>=0.7.3",
+    "numpy>=2.4.6",
+    "optuna>=4.9.0",
+    "polars>=1.41.2",
+    "scikit-learn>=1.9.0",
+    "scipy>=1.17.1",
+    "threadpoolctl>=3.6.0",
+    "tqdm>=4.67.3",
+]
 
 [project.scripts]
-agentic-hpo-in-the-loop = "agentic_hpo_in_the_loop:main"
+holmes = "holmes.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.11.8,<0.12.0"]
 build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = ""
+module-name = "holmes"
 
 [dependency-groups]
 dev = [
@@ -24,30 +39,107 @@ dev = [
 ]
 
 [tool.ruff]
-line-length = 120
+line-length    = 120
+show-fixes     = true
+src            = [ "holmes", "tests" ]
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["ALL"]
-ignore = [
-    "D203",    # one-blank-line-before-class (conflicts with D211)
-    "D213",    # multi-line-summary-second-line (conflicts with D212)
-    "COM812",  # trailing-comma-missing (conflicts with formatter)
+ignore = [ "COM812", "D203", "D213", "EM101", "ISC001", "PD010", "PT011", "PTH123", "SLF001", "TRY003" ]
+select = [
+    "A",
+    "ANN",
+    "ARG",
+    "B",
+    "BLE",
+    "C4",
+    "C90",
+    "COM",
+    "D",
+    "D1",
+    "D2",
+    "D3",
+    "D4",
+    "DTZ",
+    "E",
+    "EM",
+    "ERA",
+    "EXE",
+    "F",
+    "FA",
+    "FLY",
+    "FURB",
+    "G",
+    "I",
+    "ICN",
+    "INP",
+    "INT",
+    "ISC",
+    "LOG",
+    "N",
+    "NPY",
+    "PD",
+    "PERF",
+    "PGH",
+    "PIE",
+    "PL",
+    "PT",
+    "PTH",
+    "PYI",
+    "Q",
+    "RET",
+    "RSE",
+    "RUF",
+    "S",
+    "SIM",
+    "SLF",
+    "SLOT",
+    "T10",
+    "T20",
+    "TC",
+    "TID",
+    "TRY",
+    "UP",
+    "W",
+    "YTT",
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py"                = [ "D104", "F401", "F403", "F405" ]
+"holmes/cli.py"             = [ "T201" ]  # CLI prints to stdout by design
+"holmes/data/preprocess.py" = [ "T201" ]  # progress reporting to stdout
+"holmes/search/*"           = [ "T201" ]  # search progress to stdout
+"tests/*"                    = [ "ANN", "ARG", "D", "INP001", "PLR2004", "S101", "SLF001" ]
+
+[tool.ruff.lint.pylint]
+max-args       = 15
+max-branches   = 20
+max-returns    = 10
+max-statements = 80
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.flake8-quotes]
+docstring-quotes = "double"
+multiline-quotes = "double"
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.isort]
+known-first-party = [ "holmes" ]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
-[tool.ruff.lint.per-file-ignores]
-"tests/*" = [
-    "S101",    # assert is expected in tests
-    "D",       # docstrings not required in tests
-    "ANN",     # type annotations not required in tests
-]
+[tool.pyright]
+venv     = ".venv"
+venvPath = "."
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--cov=agentic_hpo_in_the_loop"
+addopts = "--cov=holmes"
 
 [tool.coverage.run]
-source = ["src/agentic_hpo_in_the_loop"]
+source = ["holmes"]
