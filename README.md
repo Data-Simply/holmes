@@ -27,7 +27,8 @@ despite the data being rating-shaped:
   high-confidence positive and unobserved = low-confidence zero. This is what
   `implicit.als.AlternatingLeastSquares` implements.
 
-For Amazon Books, implicit ALS is the right choice, despite the data being rating-shaped:
+For Amazon reviews (Books or any other category), implicit ALS is the right choice, despite the
+data being rating-shaped:
 
 - Most users haven't reviewed most books — the unobserveds are *missing not at random* (didn't
   encounter), not "disliked." Explicit ALS would silently treat them as missing and only train on
@@ -111,7 +112,7 @@ uv run ruff format . && uv run ruff check .
 holmes/
   config.py            # hyperparameter spaces, evaluation settings, ALSParams
   data/
-    preprocess.py      # Amazon Reviews 2023 (Books) -> sparse matrix + leave-last-out splits
+    preprocess.py      # any Amazon Reviews 2023 category -> sparse matrix + leave-last-out splits
     dataset.py         # on-disk Dataset container
   als/model.py         # ALSRecommender (implicit wrapper) shared by every strategy
   metrics/diagnostics.py  # the diagnostic battery
