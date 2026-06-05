@@ -17,7 +17,7 @@ from holmes.config import (
     ALSParams,
 )
 from holmes.data.dataset import Dataset
-from holmes.data.preprocess import build_dataset
+from holmes.data.preprocess import AMAZON_CATEGORIES, build_dataset
 from holmes.search.bayes import run_bayes
 from holmes.search.grid import run_grid
 from holmes.search.harness import evaluate_config
@@ -26,12 +26,17 @@ from holmes.search.holmes import VALIDATION_STATUSES, annotate_iteration, run_it
 
 
 def _add_common_data_arg(parser: argparse.ArgumentParser) -> None:
-    """Attach the shared ``--data`` directory argument to a subparser."""
+    """Attach the shared, required ``--data`` directory argument to a subparser.
+
+    Required (no default) so a run can never silently pick up some other category's matrix: now that
+    each category preprocesses into its own ``data/processed/<category>``, every command must name the
+    dataset it scores against.
+    """
     parser.add_argument(
         "--data",
         type=Path,
-        default=PROCESSED_DIR,
-        help="Directory holding the preprocessed dataset (default: data/processed).",
+        required=True,
+        help="Directory holding the preprocessed dataset, e.g. data/processed/Books (required).",
     )
 
 
@@ -45,8 +50,17 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="holmes", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
 
-    pre = sub.add_parser("preprocess", help="Build the Amazon Reviews (Books) interaction matrix.")
-    pre.add_argument("--category", default="Books", help="Amazon category to download (e.g. Books).")
+    pre = sub.add_parser("preprocess", help="Build an Amazon Reviews interaction matrix for a category.")
+    pre.add_argument(
+        "--category",
+        default="Books",
+        help="Amazon category to download (e.g. Books, Electronics, Video_Games). See `holmes preprocess --all`.",
+    )
+    pre.add_argument(
+        "--all",
+        action="store_true",
+        help="Preprocess every Amazon category, each into its own data/processed/<category> directory.",
+    )
     pre.add_argument(
         "--cache-dir",
         type=Path,
@@ -67,7 +81,12 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Override with a local reviews JSONL path (defaults to downloading from the HF hub).",
     )
-    pre.add_argument("--out", type=Path, default=PROCESSED_DIR, help="Output directory for the dataset.")
+    pre.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="Output directory (default: data/processed/<category>). Not allowed with --all.",
+    )
 
     grid = sub.add_parser("grid", help="Run the grid-search baseline.")
     _add_common_data_arg(grid)
@@ -188,9 +207,10 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _cmd_preprocess(args: argparse.Namespace) -> None:
+def _preprocess_one(category: str, out_dir: Path, args: argparse.Namespace) -> None:
+    """Build one category's dataset and save it to ``out_dir``."""
     dataset = build_dataset(
-        category=args.category,
+        category=category,
         cache_dir=args.cache_dir,
         source=args.source,
         max_interactions=args.max_interactions,
@@ -198,8 +218,21 @@ def _cmd_preprocess(args: argparse.Namespace) -> None:
         min_item=args.min_item,
         min_rating=args.min_rating,
     )
-    dataset.save(args.out)
-    print(f"Saved preprocessed dataset to {args.out}")
+    dataset.save(out_dir)
+    print(f"Saved preprocessed {category} dataset to {out_dir}")
+
+
+def _cmd_preprocess(args: argparse.Namespace) -> None:
+    if args.all:
+        if args.source is not None:
+            raise SystemExit("--source names one category's file and cannot be combined with --all.")
+        if args.out is not None:
+            raise SystemExit("--out cannot be combined with --all; each category writes to data/processed/<category>.")
+        for category in AMAZON_CATEGORIES:
+            _preprocess_one(category, PROCESSED_DIR / category, args)
+        return
+    out_dir = args.out if args.out is not None else PROCESSED_DIR / args.category
+    _preprocess_one(args.category, out_dir, args)
 
 
 def _cmd_grid(args: argparse.Namespace) -> None:
