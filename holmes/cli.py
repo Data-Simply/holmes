@@ -26,11 +26,7 @@ from holmes.search.holmes import VALIDATION_STATUSES, annotate_iteration, run_it
 
 
 def _add_common_data_arg(parser: argparse.ArgumentParser) -> None:
-    """Attach the shared, required ``--data`` argument.
-
-    Required (no default) so a run can't silently pick up another category's matrix now that each
-    category lives in its own ``data/processed/<category>``.
-    """
+    """Attach the shared, required ``--data`` argument to a subparser."""
     parser.add_argument(
         "--data",
         type=Path,

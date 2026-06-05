@@ -65,8 +65,7 @@ uv run holmes preprocess --category Electronics            # any category by nam
 uv run holmes preprocess --category Video_Games --max-interactions 2000000  # cap rows for a quick dev matrix
 uv run holmes preprocess --all                             # every category into data/processed/<category>
 
-# `--data` is required on every command below (no default), so a run can never silently pick up the
-# wrong category's matrix. Point it at the category subdirectory you preprocessed.
+# Point --data at the category subdirectory you preprocessed; it's required on every command below.
 #
 # Each run fits ONE seed. For stability across initializations, repeat a run with different
 # --seed values and aggregate the results yourself.

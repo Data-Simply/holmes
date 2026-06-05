@@ -52,7 +52,7 @@ class TestParser:
 
     @pytest.mark.parametrize("command", ["grid", "bayes", "holmes-iter", "heuristic", "eval"])
     def test_data_is_required(self, command):
-        """--data has no default: omitting it is an error, so a run can't grab the wrong category."""
+        """Omitting --data is an error on every dataset-consuming command."""
         with pytest.raises(SystemExit):
             _build_parser().parse_args([command])
 
