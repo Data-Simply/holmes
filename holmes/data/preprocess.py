@@ -69,11 +69,9 @@ AMAZON_CATEGORIES = (
     "Unknown",
     "Video_Games",
 )
-"""Every category in the Amazon Reviews 2023 dataset, in the names the HF hub exposes.
+"""Every Amazon Reviews 2023 category, in the HF hub's names.
 
-``build_dataset`` accepts any one of these (or, in principle, any future category the repo adds);
-this tuple is the authoritative list ``preprocess --all`` iterates so the agent never has to enumerate
-categories by hand."""
+The authoritative list ``preprocess --all`` iterates; ``build_dataset`` also takes any one by name."""
 
 _USER = "user_id"
 _ITEM = "parent_asin"

@@ -13,11 +13,7 @@ from holmes.data.preprocess import AMAZON_CATEGORIES
 
 
 def _build_or_fail(*, category, fail, dataset, **_):
-    """build_dataset stand-in that raises for the ``fail`` category and returns ``dataset`` otherwise.
-
-    Module-scope (not a closure) so ``fail``/``dataset`` are passed explicitly via ``functools.partial``,
-    keeping with the no-nested-def rule.
-    """
+    """build_dataset stand-in that raises for the ``fail`` category and returns ``dataset`` otherwise."""
     if category == fail:
         msg = f"k-core emptied the {category} matrix"
         raise ValueError(msg)
@@ -202,7 +198,7 @@ class TestCmdPreprocess:
 
         _cmd_preprocess(args)
 
-        # Every category produced its own dataset directory (verified on disk, not via a call log).
+        # Every category produced its own dataset directory.
         produced = sorted(p.name for p in tmp_path.iterdir() if p.is_dir())
         assert produced == sorted(AMAZON_CATEGORIES)
         assert (tmp_path / "Books" / "meta.json").exists()

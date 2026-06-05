@@ -26,11 +26,10 @@ from holmes.search.holmes import VALIDATION_STATUSES, annotate_iteration, run_it
 
 
 def _add_common_data_arg(parser: argparse.ArgumentParser) -> None:
-    """Attach the shared, required ``--data`` directory argument to a subparser.
+    """Attach the shared, required ``--data`` argument.
 
-    Required (no default) so a run can never silently pick up some other category's matrix: now that
-    each category preprocesses into its own ``data/processed/<category>``, every command must name the
-    dataset it scores against.
+    Required (no default) so a run can't silently pick up another category's matrix now that each
+    category lives in its own ``data/processed/<category>``.
     """
     parser.add_argument(
         "--data",
@@ -233,14 +232,13 @@ def _cmd_preprocess(args: argparse.Namespace) -> None:
     if args.out is not None:
         raise SystemExit("--out cannot be combined with --all; each category writes to data/processed/<category>.")
 
-    # Batch mode: a single failing category (a transient HF download error, or a k-core that empties
-    # the matrix) must not discard the categories already built or skip the ones after it. Isolate
-    # each build, then summarize — exiting non-zero if any failed so a calling script can tell.
+    # Batch mode: isolate each build so one category's failure (a transient HF error, an emptied
+    # k-core) neither aborts the run nor discards the categories already done. Summary exits non-zero.
     failures: list[str] = []
     for category in AMAZON_CATEGORIES:
         try:
             _preprocess_one(category, PROCESSED_DIR / category, args)
-        except Exception as exc:  # noqa: BLE001 - batch resilience: record this category, continue, summarize below
+        except Exception as exc:  # noqa: BLE001 - one category's failure must not abort the batch
             print(f"FAILED {category}: {exc}")
             failures.append(category)
 
