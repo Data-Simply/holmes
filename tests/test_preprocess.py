@@ -13,7 +13,6 @@ from holmes.data.preprocess import (
     _deduplicate_interactions,
     _k_core_filter,
     build_dataset,
-    review_filename,
 )
 
 
@@ -48,8 +47,12 @@ class TestDeduplicateInteractions:
             ],
         )
         out = _deduplicate_interactions(reviews, min_rating=4.0).collect()
-        assert out.height == 1
-        assert out["user_id"].item() == "cust_c"
+        # Each drop reason must independently fire — height alone would still pass if e.g. only
+        # the empty-user row survived through a regression that re-broke the rating filter.
+        assert out["user_id"].to_list() == ["cust_c"]
+        assert out["parent_asin"].to_list() == ["B004"]
+        assert out["rating"].null_count() == 0
+        assert (out["rating"] >= 4.0).all()
 
 
 class TestKCoreFilter:
@@ -63,7 +66,8 @@ class TestKCoreFilter:
         )
         filtered = _k_core_filter(frame, min_user=2, min_item=1)
         assert set(filtered["user_id"]) == {"cust_a"}
-        assert "B999" not in set(filtered["parent_asin"])
+        assert set(filtered["parent_asin"]) == {"B001", "B002", "B003"}
+        assert filtered.height == 3
 
     def test_iterates_until_stable(self):
         # B777 has 1 interaction -> dropped; cust_b then has 1 -> dropped; B002 then has 1 -> dropped.
@@ -124,7 +128,7 @@ class TestAssignIndicesAndSplit:
         assert int(dataset.item_popularity.sum()) == dataset.n_interactions
 
     def test_training_matrix_stores_raw_ratings_not_binary_ones(self):
-        """The matrix value is the raw rating (used as ``r_ui`` in ``c_ui = 1 + α·r_ui``), not 1.0.
+        """The matrix value is the raw rating (used as ``r_ui`` in ``c_ui = 1 + alpha * r_ui``), not 1.0.
 
         Cust_a's first two interactions (B10 @ rating 5.0, B11 @ rating 4.0) end up in train; the
         stored CSR values must equal those ratings, otherwise we are back to binary confidence and
@@ -169,10 +173,6 @@ class TestAssignIndicesAndSplit:
         assert (forward.train_ui != reversed_ties.train_ui).nnz == 0
 
 
-def test_review_filename_targets_category():
-    assert review_filename("Books") == "raw/review_categories/Books.jsonl"
-
-
 class TestReviewCache:
     def test_build_cache_keeps_only_required_columns(self, tmp_path):
         """The raw reviews carry many fields; the cache must project to just the four we consume."""
@@ -186,7 +186,12 @@ class TestReviewCache:
 
         cached = pl.read_parquet(cache_path)
         assert cached.columns == list(_REVIEW_COLUMNS)
-        assert cached.height == 2
+        # Pin row values too — a regression that wrote the right column set but the wrong row
+        # values (e.g. swapped rating/timestamp) would pass a column-set + height check alone.
+        assert cached.to_dicts() == [
+            {"user_id": "cust_a", "parent_asin": "B001", "rating": 5.0, "timestamp": 10},
+            {"user_id": "cust_b", "parent_asin": "B002", "rating": 4.0, "timestamp": 20},
+        ]
 
     def test_build_dataset_reuses_existing_cache_without_rereading_source(self, tmp_path, monkeypatch):
         """A present cache is scanned directly; the cache builder is never invoked."""
