@@ -36,6 +36,25 @@ Run `holmes ranges` once at the start to print the supported bounds as JSON — 
 from `GRID_SPACE` so the agentic loop, grid, and Bayes all optimize over the same region. Stay
 within those bounds; out-of-bounds params are rejected by `holmes-iter`.
 
+## Running a fit
+
+Each `heuristic`, `holmes-iter`, and `eval` call fits one ALS model (~1–4 min, longer at
+`factors=512`). Run every fit as a **background** command and wait for the completion
+notification — do not poll. Never use `sleep` / `pgrep` / `pkill` / `kill` / `while`-wait
+loops to wait on it: foreground `sleep` is blocked in this harness, those loops get
+auto-backgrounded or killed, and the process-control commands trigger permission prompts you
+don't need. The completion notification is the signal; check the trajectory afterwards.
+
+Run **one fit at a time**. `holmes-iter` and `heuristic --trajectory ...` both
+read-modify-append `results/trajectory.json`, so two concurrent fits race on it and one
+iteration's entry will be lost.
+
+If a run looks suspiciously long and you want a liveness signal, pass `--progress` to
+`holmes heuristic` / `holmes-iter` / `holmes eval`: the underlying ALS fit streams a
+per-sweep tqdm bar to stderr (e.g. `13/20 [01:42<00:38]`), which you can read out of the
+backgrounded command's output file to see sweeps tick and an ETA. Leave it off by default to
+keep the trajectory output clean — turn it on when you have reason to suspect a hang.
+
 ## The workflow — run this loop autonomously
 
 Do **not** pause to ask permission between iterations. Each printed trajectory entry includes
@@ -74,9 +93,11 @@ hypothesis, and submit the iteration as a single Bash command:
 ```bash
 holmes holmes-iter --data data/processed --trajectory results/trajectory.json --seed 0 \
   --factors 128 --regularization 0.1 --iterations 20 --alpha 40.0 \
-  --mechanism "Raising regularization 10x cuts mean_factor_norm by ~half and closes train_test_ndcg_gap from ~0.4 to <0.2." \
+  --mechanism "Raising regularization 10x cuts mean_factor_norm by ~half and closes \
+    train_test_ndcg_gap from ~0.4 to <0.2." \
   --outcome  "Validation ndcg rises ~10-15% because less memorization improves generalization." \
-  --falsifiers "If the gap does not narrow, the gap wasn't driven by under-regularization. If the gap narrows but ndcg falls, regularization is now too strong (pattern 5)."
+  --falsifiers "If the gap does not narrow, the gap wasn't driven by under-regularization. \
+    If the gap narrows but ndcg falls, regularization is now too strong (pattern 5)."
 ```
 
 All seven flags are required. The hypothesis-before-results discipline is enforced this way:
@@ -121,7 +142,9 @@ exactly one of four states, then record both via:
 ```bash
 holmes annotate --trajectory results/trajectory.json --iteration N \
   --status validated \
-  --interpretation "Gap fell 0.41 -> 0.17 as predicted and ndcg rose 14% -> validated. The lever is regularization; next, probe whether factors can now go higher without re-opening the gap."
+  --interpretation "Gap fell 0.41 -> 0.17 as predicted and ndcg rose 14% -> validated. \
+    The lever is regularization; next, probe whether factors can now go higher without \
+    re-opening the gap."
 ```
 
 The four states:
@@ -156,6 +179,7 @@ the causal model (threshold? interaction with another HP? different pathway?) an
 
 Stop and surface to the user if the diagnostics reveal the experiment itself is broken, not
 the model:
+
 - re-running identical params with the same `--seed` gives a different ndcg (the fit isn't
   reproducible → iterations aren't comparable).
 - `train_recon_error` does not fall as `iterations` rises (training not converging in budget).
@@ -173,8 +197,12 @@ and `references/TRAJECTORY_SCHEMA.md` for the exact log schema.
 
 When the budget is spent, ndcg has plateaued, or you have exhausted plausible hypotheses, run
 the winner on the held-out **test** split once for an unbiased number:
+
 ```bash
-holmes eval --data data/processed --params '{"factors": 96, "regularization": 0.1, "iterations": 20, "alpha": 40.0}' --split test
+holmes eval --data data/processed \
+  --params '{"factors": 96, "regularization": 0.1, "iterations": 20, "alpha": 40.0}' \
+  --split test
 ```
+
 Then write a short summary: best config, the ndcg it reached, the trajectory of hypotheses
 that got there, and what remains weak (e.g. tail_recall still low).

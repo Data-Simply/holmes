@@ -78,6 +78,7 @@ def evaluate_config(
     seed: int = DEFAULT_SEED,
     k: int = TOP_K,
     split: str = "val",
+    show_progress: bool = False,
 ) -> EvalResult:
     """Fit ``params`` once and compute the diagnostic battery.
 
@@ -87,6 +88,7 @@ def evaluate_config(
         seed: Random seed for the fit and diagnostic sampling.
         k: Ranking cut-off for all top-k metrics.
         split: Held-out split to score (``"val"`` during search, ``"test"`` for reporting).
+        show_progress: Forwarded to :meth:`ALSRecommender.fit`.
 
     Returns:
         EvalResult: The params, the seed, the diagnostic battery, and the ``score`` (NDCG@K).
@@ -94,7 +96,7 @@ def evaluate_config(
         ``metrics`` so the same field set is available everywhere a trial is recorded.
     """
     fit_start = time.perf_counter()
-    model = ALSRecommender(params, seed=seed).fit(dataset.train_ui)
+    model = ALSRecommender(params, seed=seed).fit(dataset.train_ui, show_progress=show_progress)
     fit_time_seconds = time.perf_counter() - fit_start
 
     eval_start = time.perf_counter()

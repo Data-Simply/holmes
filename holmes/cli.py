@@ -40,6 +40,16 @@ def _add_seed_arg(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED, help="Random seed for the fit.")
 
 
+def _add_progress_arg(parser: argparse.ArgumentParser) -> None:
+    """Attach the shared ``--progress`` flag so a long backgrounded fit emits a per-sweep ETA."""
+    parser.add_argument(
+        "--progress",
+        action="store_true",
+        help="Stream a per-sweep tqdm progress bar from the ALS fit to stderr. "
+        "Off by default (silent); tail the command's output file to watch sweeps tick.",
+    )
+
+
 def _build_parser() -> argparse.ArgumentParser:
     """Construct the top-level argument parser with one subparser per strategy."""
     parser = argparse.ArgumentParser(prog="holmes", description=__doc__)
@@ -128,6 +138,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default=MAX_ITERATIONS,
         help=f"Hard cap on total trajectory length (default {MAX_ITERATIONS}, matching the grid and bayes budgets).",
     )
+    _add_progress_arg(holmes_iter)
 
     heuristic = sub.add_parser(
         "heuristic",
@@ -149,6 +160,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default=MAX_ITERATIONS,
         help=f"Hard cap on total trajectory length (default {MAX_ITERATIONS}).",
     )
+    _add_progress_arg(heuristic)
 
     sub.add_parser(
         "ranges",
@@ -184,6 +196,7 @@ def _build_parser() -> argparse.ArgumentParser:
     _add_seed_arg(evaluate)
     evaluate.add_argument("--k", type=int, default=TOP_K, help="Ranking cut-off.")
     evaluate.add_argument("--split", default="test", choices=["val", "test"], help="Held-out split to score.")
+    _add_progress_arg(evaluate)
 
     return parser
 
@@ -255,6 +268,7 @@ def _cmd_holmes_iter(args: argparse.Namespace) -> None:
         seed=args.seed,
         k=args.k,
         max_iterations=args.max_iterations,
+        show_progress=args.progress,
     )
 
 
@@ -270,6 +284,7 @@ def _cmd_heuristic(args: argparse.Namespace) -> None:
             seed=args.seed,
             k=args.k,
             max_iterations=args.max_iterations,
+            show_progress=args.progress,
         )
         return
     print(json.dumps({"params": params.to_dict(), "rationale": rationale}, indent=2))
@@ -309,7 +324,14 @@ def _cmd_eval(args: argparse.Namespace) -> None:
         msg = f"--params must be a JSON file or JSON string; could not parse {raw!r}: {exc}"
         raise SystemExit(msg) from exc
     params = ALSParams.from_dict(spec)
-    result = evaluate_config(params, Dataset.load(args.data), seed=args.seed, k=args.k, split=args.split)
+    result = evaluate_config(
+        params,
+        Dataset.load(args.data),
+        seed=args.seed,
+        k=args.k,
+        split=args.split,
+        show_progress=args.progress,
+    )
     print(json.dumps({"params": result["params"], "seed": result["seed"], "metrics": result["metrics"]}, indent=2))
 
 

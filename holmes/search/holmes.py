@@ -141,6 +141,7 @@ def run_iteration(
     seed: int = DEFAULT_SEED,
     k: int = TOP_K,
     max_iterations: int = MAX_ITERATIONS,
+    show_progress: bool = False,
 ) -> TrajectoryEntry:
     """Run one HOLMES iteration from an input spec and append it to the trajectory.
 
@@ -160,6 +161,7 @@ def run_iteration(
         k: Ranking cut-off.
         max_iterations: Hard cap on total trajectory length, shared across grid/bayes/HOLMES so
             the search-budget comparison is fixed. Defaults to :data:`holmes.config.MAX_ITERATIONS`.
+        show_progress: Forwarded to :func:`evaluate_config`.
 
     Returns:
         TrajectoryEntry: The appended trajectory entry, including computed metrics.
@@ -184,7 +186,7 @@ def run_iteration(
         )
         raise RuntimeError(msg)
 
-    result = evaluate_config(params, dataset, seed=seed, k=k, split="val")
+    result = evaluate_config(params, dataset, seed=seed, k=k, split="val", show_progress=show_progress)
     entry: TrajectoryEntry = {
         "iteration": len(trajectory) + 1,
         "params": params.to_dict(),
