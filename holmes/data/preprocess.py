@@ -7,7 +7,7 @@ pipeline needs, persisting a local Parquet **cache** — so subsequent runs ``sc
 and skip the multi-GB re-read. Filtering, deduplication, and aggregation then run through Polars' streaming
 engine (vectorized in Rust, spilling larger-than-memory) rather than iterating tens of millions of
 rows in Python. Each kept review is one positive interaction stored at its raw star rating
-(``c_ui = 1 + α·rating`` in implicit ALS, so 5-star reviews carry stronger confidence than 4-star);
+(``c_ui = 1 + alpha * rating`` in implicit ALS, so 5-star reviews carry stronger confidence than 4-star);
 the matrix is k-core filtered and split leave-last-out by timestamp.
 """
 
