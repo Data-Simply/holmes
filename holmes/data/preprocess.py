@@ -33,6 +33,46 @@ REVIEW_FILENAME_TEMPLATE = "raw/review_categories/{category}.jsonl"
 The dataset ships a loader script, so Hugging Face never auto-converted it to Parquet; the JSONL is
 fetched from ``main`` via the HF hub cache (resumable, integrity-checked) and read by Polars."""
 
+AMAZON_CATEGORIES = (
+    "All_Beauty",
+    "Amazon_Fashion",
+    "Appliances",
+    "Arts_Crafts_and_Sewing",
+    "Automotive",
+    "Baby_Products",
+    "Beauty_and_Personal_Care",
+    "Books",
+    "CDs_and_Vinyl",
+    "Cell_Phones_and_Accessories",
+    "Clothing_Shoes_and_Jewelry",
+    "Digital_Music",
+    "Electronics",
+    "Gift_Cards",
+    "Grocery_and_Gourmet_Food",
+    "Handmade_Products",
+    "Health_and_Household",
+    "Health_and_Personal_Care",
+    "Home_and_Kitchen",
+    "Industrial_and_Scientific",
+    "Kindle_Store",
+    "Magazine_Subscriptions",
+    "Movies_and_TV",
+    "Musical_Instruments",
+    "Office_Products",
+    "Patio_Lawn_and_Garden",
+    "Pet_Supplies",
+    "Software",
+    "Sports_and_Outdoors",
+    "Subscription_Boxes",
+    "Tools_and_Home_Improvement",
+    "Toys_and_Games",
+    "Unknown",
+    "Video_Games",
+)
+"""Every Amazon Reviews 2023 category, in the HF hub's names.
+
+The authoritative list ``preprocess --all`` iterates; ``build_dataset`` also takes any one by name."""
+
 _USER = "user_id"
 _ITEM = "parent_asin"
 _RATING = "rating"
@@ -108,10 +148,7 @@ def _deduplicate_interactions(reviews: pl.LazyFrame, min_rating: float) -> pl.La
         reviews.select(_USER, _ITEM, _RATING, _TIME)
         .filter(pl.col(_RATING).is_not_null() & (pl.col(_RATING) >= min_rating))
         .filter(
-            pl.col(_USER).is_not_null()
-            & pl.col(_ITEM).is_not_null()
-            & (pl.col(_USER) != "")
-            & (pl.col(_ITEM) != ""),
+            pl.col(_USER).is_not_null() & pl.col(_ITEM).is_not_null() & (pl.col(_USER) != "") & (pl.col(_ITEM) != ""),
         )
         .group_by(_USER, _ITEM)
         .agg(pl.col(_TIME).max(), pl.col(_RATING).max())

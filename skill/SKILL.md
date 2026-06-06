@@ -16,11 +16,14 @@ hypothesis*, run one fit, and decide whether the hypothesis was validated. The t
 
 Every step is a `holmes` CLI call. Do not edit `results/trajectory.json` by hand — the CLI
 owns that file and edits-via-flag are deterministic where free-form edits are not. The only
-files the workflow touches are `data/processed/` (input) and `results/trajectory.json` (output).
+files the workflow touches are a preprocessed dataset directory `data/processed/<category>/`
+(input, e.g. `data/processed/Books`) and `results/trajectory.json` (output).
 
 ## When to use this
 
-- A preprocessed dataset exists at `data/processed/` (or run `holmes preprocess` first).
+- A preprocessed dataset exists at `data/processed/<category>` (or run `holmes preprocess
+  --category <category>` first; it defaults to `Books`). Every command below requires `--data`
+  pointing at that directory — there is no default, so the examples use `data/processed/Books`.
 - A shared fit budget caps the loop — a hard cap shared with the grid and Bayes baselines so
   the three strategies are compared at the same number of ALS fits. Call `holmes ranges` at the
   start of the loop to read both the HP bounds and the `max_iterations` budget; the CLI
@@ -60,7 +63,7 @@ rationales (e.g. "factors=128 because the dataset is large; falsifier: high
 entry to the trajectory:
 
 ```bash
-holmes heuristic --data data/processed --trajectory results/trajectory.json --seed 0
+holmes heuristic --data data/processed/Books --trajectory results/trajectory.json --seed 0
 ```
 
 The diagnostic battery is computed on the **validation** split. The entry is recorded with
@@ -72,7 +75,7 @@ For every subsequent iteration, read the latest trajectory entry, decide the nex
 hypothesis, and submit the iteration as a single Bash command:
 
 ```bash
-holmes holmes-iter --data data/processed --trajectory results/trajectory.json --seed 0 \
+holmes holmes-iter --data data/processed/Books --trajectory results/trajectory.json --seed 0 \
   --factors 128 --regularization 0.1 --iterations 20 --alpha 40.0 \
   --mechanism "Raising regularization 10x cuts mean_factor_norm by ~half and closes train_test_ndcg_gap from ~0.4 to <0.2." \
   --outcome  "Validation ndcg rises ~10-15% because less memorization improves generalization." \
@@ -174,7 +177,7 @@ and `references/TRAJECTORY_SCHEMA.md` for the exact log schema.
 When the budget is spent, ndcg has plateaued, or you have exhausted plausible hypotheses, run
 the winner on the held-out **test** split once for an unbiased number:
 ```bash
-holmes eval --data data/processed --params '{"factors": 96, "regularization": 0.1, "iterations": 20, "alpha": 40.0}' --split test
+holmes eval --data data/processed/Books --params '{"factors": 96, "regularization": 0.1, "iterations": 20, "alpha": 40.0}' --split test
 ```
 Then write a short summary: best config, the ndcg it reached, the trajectory of hypotheses
 that got there, and what remains weak (e.g. tail_recall still low).

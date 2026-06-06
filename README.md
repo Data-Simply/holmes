@@ -2,8 +2,9 @@
 
 **HOLMES — Hypothesis-driven Optimization via LLM-guided Model Exploration and Search**
 
-HOLMES benchmarks hyperparameter optimization of an implicit-feedback **ALS book recommender**
-on the Amazon Reviews 2023 (Books) dataset, comparing three strategies on the same fit budget:
+HOLMES benchmarks hyperparameter optimization of an implicit-feedback **ALS recommender** on the
+Amazon Reviews 2023 dataset — any category (Books is the default; preprocess one or `--all` of them
+side by side) — comparing three strategies on the same fit budget:
 
 - **grid** — exhaustive grid search
 - **bayes** — Bayesian optimization (Optuna TPE)
@@ -26,7 +27,8 @@ despite the data being rating-shaped:
   high-confidence positive and unobserved = low-confidence zero. This is what
   `implicit.als.AlternatingLeastSquares` implements.
 
-For Amazon Books, implicit ALS is the right choice, despite the data being rating-shaped:
+For Amazon reviews (Books or any other category), implicit ALS is the right choice, despite the
+data being rating-shaped:
 
 - Most users haven't reviewed most books — the unobserveds are *missing not at random* (didn't
   encounter), not "disliked." Explicit ALS would silently treat them as missing and only train on
@@ -53,31 +55,36 @@ uv sync
 ## Workflow
 
 ```bash
-# 1. Build the interaction matrix from Amazon Reviews 2023 (Books). The first run downloads the
-#    gzipped reviews (~20GB uncompressed) from the McAuley mirror and caches the columns it needs
-#    as data/raw_cache/Books.parquet; later runs reuse that cache and skip the download. Polars
-#    then streams the dedup, k-core filter, and leave-last-out split into data/processed/.
-uv run holmes preprocess                         # full dataset (one-time download)
-uv run holmes preprocess --max-interactions 2000000   # cap rows for a quick dev matrix
+# 1. Build the interaction matrix from any Amazon Reviews 2023 category. The first run downloads the
+#    gzipped reviews (~20GB uncompressed for Books) from the McAuley mirror and caches the columns it
+#    needs as data/raw_cache/<category>.parquet; later runs reuse that cache and skip the download.
+#    Polars then streams the dedup, k-core filter, and leave-last-out split into
+#    data/processed/<category>/ — so each category is a separate, side-by-side dataset.
+uv run holmes preprocess                                   # Books (default), full dataset
+uv run holmes preprocess --category Electronics            # any category by name
+uv run holmes preprocess --category Video_Games --max-interactions 2000000  # cap rows for a quick dev matrix
+uv run holmes preprocess --all                             # every category into data/processed/<category>
 
+# Point --data at the category subdirectory you preprocessed; it's required on every command below.
+#
 # Each run fits ONE seed. For stability across initializations, repeat a run with different
 # --seed values and aggregate the results yourself.
 
 # 2a. Grid-search baseline.
-uv run holmes grid --data data/processed --seed 0
+uv run holmes grid --data data/processed/Books --seed 0
 
 # 2b. Bayesian-optimization baseline (--seed is the per-fit seed; --sampler-seed is the TPE
 #     search trajectory).
-uv run holmes bayes --data data/processed --trials 30 --seed 0 --sampler-seed 0
+uv run holmes bayes --data data/processed/Books --trials 30 --seed 0 --sampler-seed 0
 
 # 2c. The agentic HOLMES loop is driven by Claude Code via skill/SKILL.md. Each round runs
 #     ONE iteration, appending diagnostics to an append-only trajectory log:
-uv run holmes heuristic --data data/processed          # suggested starting params
-uv run holmes holmes-iter --data data/processed \
+uv run holmes heuristic --data data/processed/Books          # suggested starting params
+uv run holmes holmes-iter --data data/processed/Books \
   --input iter.json --trajectory results/trajectory.json --seed 0
 
 # 3. Score a chosen config on the held-out test split for an unbiased number.
-uv run holmes eval --data data/processed --params '{"factors": 96, "regularization": 0.05, "iterations": 30, "alpha": 20.0}' --split test
+uv run holmes eval --data data/processed/Books --params '{"factors": 96, "regularization": 0.05, "iterations": 30, "alpha": 20.0}' --split test
 ```
 
 ## The agentic loop
@@ -104,7 +111,7 @@ uv run ruff format . && uv run ruff check .
 holmes/
   config.py            # hyperparameter spaces, evaluation settings, ALSParams
   data/
-    preprocess.py      # Amazon Reviews 2023 (Books) -> sparse matrix + leave-last-out splits
+    preprocess.py      # any Amazon Reviews 2023 category -> sparse matrix + leave-last-out splits
     dataset.py         # on-disk Dataset container
   als/model.py         # ALSRecommender (implicit wrapper) shared by every strategy
   metrics/diagnostics.py  # the diagnostic battery
