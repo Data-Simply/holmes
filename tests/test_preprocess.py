@@ -5,9 +5,11 @@ not tested here, consistent with treating I/O as an external dependency.
 """
 
 import polars as pl
+import pytest
 
 from holmes.data.preprocess import (
     _REVIEW_COLUMNS,
+    AMAZON_CATEGORIES,
     _assign_indices_and_split,
     _build_review_cache,
     _deduplicate_interactions,
