@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from holmes.cli import _build_iter_spec, _cmd_eval, _cmd_heuristic, _cmd_ranges
+from holmes.cli import _build_iter_spec, _build_parser, _cmd_eval, _cmd_heuristic, _cmd_preprocess, _cmd_ranges
 from holmes.config import HOLMES_SPACE, MAX_ITERATIONS
 from holmes.data.preprocess import AMAZON_CATEGORIES
 

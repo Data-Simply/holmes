@@ -54,10 +54,10 @@ stability signal (it is not a field on a single entry).
   names *which diagnostic metrics move, which direction, roughly how much* — not just the goal.
 - **`validation_status`** is exactly one of the four states. Decide it by comparing the
   mechanism prediction and outcome prediction to what actually moved:
-  - mechanism moved + outcome followed → `validated`
-  - mechanism moved + outcome didn't → `partial_mechanism`
-  - outcome moved + mechanism didn't → `coincidence`
-  - nothing moved → `null`
+    - mechanism moved + outcome followed → `validated`
+    - mechanism moved + outcome didn't → `partial_mechanism`
+    - outcome moved + mechanism didn't → `coincidence`
+    - nothing moved → `null`
 - **`interpretation`** records what you learned and seeds the next hypothesis. For non-validated
   results, state the disambiguation plan (see the reasoning guide).
 - Never edit `params` or `metrics` after the run — those are the evidence. Only the two
