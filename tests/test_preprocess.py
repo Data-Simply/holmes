@@ -5,9 +5,11 @@ not tested here, consistent with treating I/O as an external dependency.
 """
 
 import polars as pl
+import pytest
 
 from holmes.data.preprocess import (
     _REVIEW_COLUMNS,
+    AMAZON_CATEGORIES,
     _assign_indices_and_split,
     _build_review_cache,
     _deduplicate_interactions,
@@ -169,8 +171,22 @@ class TestAssignIndicesAndSplit:
         assert (forward.train_ui != reversed_ties.train_ui).nnz == 0
 
 
-def test_review_filename_targets_category():
-    assert review_filename("Books") == "raw/review_categories/Books.jsonl"
+@pytest.mark.parametrize("category", ["Books", "Electronics", "Video_Games"])
+def test_review_filename_targets_category(category):
+    assert review_filename(category) == f"raw/review_categories/{category}.jsonl"
+
+
+class TestAmazonCategories:
+    def test_books_is_a_member(self):
+        assert "Books" in AMAZON_CATEGORIES
+
+    def test_no_duplicates(self):
+        assert len(set(AMAZON_CATEGORIES)) == len(AMAZON_CATEGORIES)
+
+    def test_covers_the_full_2023_catalog(self):
+        # The Amazon Reviews 2023 dataset ships 34 review categories; pin the count so a typo that
+        # drops or doubles one is caught rather than silently shrinking `preprocess --all`.
+        assert len(AMAZON_CATEGORIES) == 34
 
 
 class TestReviewCache:

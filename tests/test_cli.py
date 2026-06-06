@@ -1,6 +1,7 @@
 """Tests for the CLI argument parser."""
 
 import argparse
+import functools
 import json
 from pathlib import Path
 
@@ -8,6 +9,15 @@ import pytest
 
 from holmes.cli import _build_iter_spec, _cmd_eval, _cmd_heuristic, _cmd_ranges
 from holmes.config import HOLMES_SPACE, MAX_ITERATIONS
+from holmes.data.preprocess import AMAZON_CATEGORIES
+
+
+def _build_or_fail(*, category, fail, dataset, **_):
+    """build_dataset stand-in that raises for the ``fail`` category and returns ``dataset`` otherwise."""
+    if category == fail:
+        msg = f"k-core emptied the {category} matrix"
+        raise ValueError(msg)
+    return dataset
 
 
 def _iter_namespace(**overrides):
@@ -56,6 +66,65 @@ class TestCmdEval:
         )
         with pytest.raises(SystemExit, match="--params must be a JSON file or JSON string"):
             _cmd_eval(args)
+
+
+class TestCmdPreprocess:
+    def test_default_out_namespaces_by_category(self, books_dataset, tmp_path, monkeypatch):
+        """Without --out the dataset lands in data/processed/<category>, not a shared directory."""
+        monkeypatch.setattr("holmes.cli.PROCESSED_DIR", tmp_path)
+        monkeypatch.setattr("holmes.cli.build_dataset", lambda **_: books_dataset)
+        args = _build_parser().parse_args(["preprocess", "--category", "Electronics"])
+
+        _cmd_preprocess(args)
+
+        assert (tmp_path / "Electronics" / "meta.json").exists()
+
+    def test_explicit_out_overrides_the_default(self, books_dataset, tmp_path, monkeypatch):
+        monkeypatch.setattr("holmes.cli.build_dataset", lambda **_: books_dataset)
+        out = tmp_path / "custom"
+        args = _build_parser().parse_args(["preprocess", "--out", str(out)])
+
+        _cmd_preprocess(args)
+
+        assert (out / "meta.json").exists()
+
+    def test_all_preprocesses_every_category_into_its_own_dir(self, books_dataset, tmp_path, monkeypatch):
+        monkeypatch.setattr("holmes.cli.PROCESSED_DIR", tmp_path)
+        monkeypatch.setattr("holmes.cli.build_dataset", lambda **_: books_dataset)
+        args = _build_parser().parse_args(["preprocess", "--all"])
+
+        _cmd_preprocess(args)
+
+        # Every category produced its own dataset directory.
+        produced = sorted(p.name for p in tmp_path.iterdir() if p.is_dir())
+        assert produced == sorted(AMAZON_CATEGORIES)
+        assert (tmp_path / "Books" / "meta.json").exists()
+
+    def test_all_continues_past_a_failing_category(self, books_dataset, tmp_path, monkeypatch):
+        """One category raising must not abort the batch: the rest still build, then a summary exits non-zero."""
+        monkeypatch.setattr("holmes.cli.PROCESSED_DIR", tmp_path)
+        monkeypatch.setattr(
+            "holmes.cli.build_dataset",
+            functools.partial(_build_or_fail, fail="Books", dataset=books_dataset),
+        )
+        args = _build_parser().parse_args(["preprocess", "--all"])
+
+        with pytest.raises(SystemExit, match="1 of 34 categories failed: Books"):
+            _cmd_preprocess(args)
+
+        produced = {p.name for p in tmp_path.iterdir() if p.is_dir()}
+        assert "Books" not in produced  # the failing category wrote nothing
+        assert produced == set(AMAZON_CATEGORIES) - {"Books"}  # all 33 others still built
+
+    def test_all_rejects_out(self):
+        args = _build_parser().parse_args(["preprocess", "--all", "--out", "x"])
+        with pytest.raises(SystemExit, match="--out cannot be combined with --all"):
+            _cmd_preprocess(args)
+
+    def test_all_rejects_source(self):
+        args = _build_parser().parse_args(["preprocess", "--all", "--source", "reviews.jsonl"])
+        with pytest.raises(SystemExit, match="--source"):
+            _cmd_preprocess(args)
 
 
 class TestCmdHeuristic:
