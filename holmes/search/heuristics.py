@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from holmes.config import ALSParams
+from holmes.config import GRID_SPACE, ALSParams
 
 if TYPE_CHECKING:
     from holmes.data.dataset import Dataset
@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 _LARGE_INTERACTIONS = 1_000_000
 _SMALL_INTERACTIONS = 100_000
 _SPARSE_DENSITY = 1e-3
+_HEURISTIC_REGULARIZATION = GRID_SPACE["regularization"][0]
 
 
 def initial_params(dataset: Dataset) -> tuple[ALSParams, dict[str, str]]:
@@ -49,10 +50,12 @@ def initial_params(dataset: Dataset) -> tuple[ALSParams, dict[str, str]]:
         alpha = 15.0
         alpha_reason = f"density {density:.1e} is moderate; alpha=15 as a gentler confidence weight"
 
-    params = ALSParams(factors=factors, regularization=0.01, iterations=20, alpha=alpha)
+    params = ALSParams(factors=factors, regularization=_HEURISTIC_REGULARIZATION, iterations=20, alpha=alpha)
     rationale = {
         "factors": factors_reason,
-        "regularization": "0.01 is a standard mid-range L2 penalty for implicit ALS",
+        "regularization": (
+            f"{_HEURISTIC_REGULARIZATION} is the lightest in-bounds L2 penalty, leaving headroom to raise it"
+        ),
         "iterations": "20 sweeps is typically enough for ALS to converge on matrices this size",
         "alpha": alpha_reason,
     }
@@ -84,8 +87,8 @@ def initial_hypothesis(params: ALSParams, rationale: dict[str, str]) -> dict[str
         "this is the floor that subsequent iterations must beat."
     )
     falsifiers = (
-        "If train_recon_error stays high, the factors/iterations rules underspecified the capacity "
-        "needed to fit this matrix. If train_test_ndcg_gap is large, regularization=0.01 is too low "
-        "for this density. If tail_recall is near zero, the alpha rule failed to surface tail items."
+        f"If train_recon_error stays high, the factors/iterations rules underspecified the capacity "
+        f"needed to fit this matrix. If train_test_ndcg_gap is large, regularization={params.regularization} "
+        f"is too low for this density. If tail_recall is near zero, the alpha rule failed to surface tail items."
     )
     return {"mechanism": mechanism, "outcome": outcome, "falsifiers": falsifiers}

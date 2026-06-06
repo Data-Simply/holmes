@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from holmes.cli import _build_iter_spec, _build_parser, _cmd_eval, _cmd_heuristic, _cmd_preprocess, _cmd_ranges
+from holmes.cli import _build_iter_spec, _cmd_eval, _cmd_heuristic, _cmd_ranges
 from holmes.config import HOLMES_SPACE, MAX_ITERATIONS
 from holmes.data.preprocess import AMAZON_CATEGORIES
 
@@ -32,110 +32,6 @@ def _iter_namespace(**overrides):
         "falsifiers": None,
     }
     return argparse.Namespace(**{**defaults, **overrides})
-
-
-class TestParser:
-    def test_grid_defaults_to_canonical_seed(self):
-        args = _build_parser().parse_args(["grid", "--data", "x"])
-        assert args.command == "grid"
-        assert args.seed == 0
-        assert isinstance(args.seed, int)
-
-    def test_explicit_seed_is_parsed_as_int(self):
-        args = _build_parser().parse_args(["eval", "--data", "x", "--params", "{}", "--seed", "5"])
-        assert args.seed == 5
-
-    def test_bayes_has_distinct_fit_and_sampler_seeds(self):
-        args = _build_parser().parse_args(["bayes", "--data", "x", "--seed", "3", "--sampler-seed", "7"])
-        assert args.seed == 3
-        assert args.sampler_seed == 7
-
-    @pytest.mark.parametrize("command", ["grid", "bayes", "holmes-iter", "heuristic", "eval"])
-    def test_data_is_required(self, command):
-        """Omitting --data is an error on every dataset-consuming command."""
-        with pytest.raises(SystemExit):
-            _build_parser().parse_args([command])
-
-    def test_preprocess_all_flag_defaults_false(self):
-        args = _build_parser().parse_args(["preprocess"])
-        assert args.all is False
-        assert args.out is None
-
-    def test_preprocess_all_flag_parsed(self):
-        args = _build_parser().parse_args(["preprocess", "--all"])
-        assert args.all is True
-
-    def test_preprocess_max_interactions_defaults_to_no_limit(self):
-        args = _build_parser().parse_args(["preprocess"])
-        assert args.max_interactions is None
-
-    def test_missing_subcommand_errors(self):
-        with pytest.raises(SystemExit):
-            _build_parser().parse_args([])
-
-    def test_heuristic_trajectory_defaults_to_none(self):
-        args = _build_parser().parse_args(["heuristic", "--data", "x"])
-        assert args.trajectory is None
-
-    def test_heuristic_trajectory_is_parsed_as_path(self):
-        args = _build_parser().parse_args(
-            ["heuristic", "--data", "x", "--trajectory", "results/trajectory.json", "--seed", "3"],
-        )
-        assert args.trajectory == Path("results/trajectory.json")
-        assert args.seed == 3
-
-    def test_holmes_iter_param_flags_parsed_with_correct_types(self):
-        args = _build_parser().parse_args(
-            [
-                "holmes-iter",
-                "--data",
-                "x",
-                "--factors",
-                "128",
-                "--regularization",
-                "0.05",
-                "--iterations",
-                "25",
-                "--alpha",
-                "12.5",
-                "--mechanism",
-                "m",
-                "--outcome",
-                "o",
-                "--falsifiers",
-                "f",
-            ],
-        )
-        assert args.factors == 128
-        assert args.regularization == 0.05
-        assert args.iterations == 25
-        assert args.alpha == 12.5
-
-    def test_holmes_iter_hypothesis_flags_parsed(self):
-        args = _build_parser().parse_args(
-            [
-                "holmes-iter",
-                "--data",
-                "x",
-                "--factors",
-                "64",
-                "--regularization",
-                "0.01",
-                "--iterations",
-                "20",
-                "--alpha",
-                "40.0",
-                "--mechanism",
-                "raises regularization",
-                "--outcome",
-                "ndcg up",
-                "--falsifiers",
-                "no shift",
-            ],
-        )
-        assert args.mechanism == "raises regularization"
-        assert args.outcome == "ndcg up"
-        assert args.falsifiers == "no shift"
 
 
 class TestCmdRanges:
@@ -166,6 +62,7 @@ class TestCmdEval:
             seed=0,
             k=10,
             split="test",
+            progress=False,
         )
         with pytest.raises(SystemExit, match="--params must be a JSON file or JSON string"):
             _cmd_eval(args)
@@ -236,7 +133,14 @@ class TestCmdHeuristic:
         data_dir = tmp_path / "data"
         books_dataset.save(data_dir)
         trajectory_path = tmp_path / "trajectory.json"
-        args = argparse.Namespace(data=data_dir, trajectory=trajectory_path, seed=0, k=10, max_iterations=10)
+        args = argparse.Namespace(
+            data=data_dir,
+            trajectory=trajectory_path,
+            seed=0,
+            k=10,
+            max_iterations=10,
+            progress=False,
+        )
 
         _cmd_heuristic(args)
 

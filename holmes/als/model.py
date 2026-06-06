@@ -46,12 +46,14 @@ class ALSRecommender:
         )
         self._fitted = False
 
-    def fit(self, train_ui: sp.csr_matrix) -> ALSRecommender:
+    def fit(self, train_ui: sp.csr_matrix, *, show_progress: bool = False) -> ALSRecommender:
         """Fit the model on a user-item training matrix.
 
         Args:
             train_ui: Rating-weighted CSR matrix of shape ``(n_users, n_items)``; stored values are
-                the raw star ratings consumed as ``r_ui`` in ``c_ui = 1 + α·r_ui``.
+                the raw star ratings consumed as ``r_ui`` in ``c_ui = 1 + alpha * r_ui``.
+            show_progress: If true, ``implicit`` writes a per-sweep tqdm bar to stderr. Off by
+                default; on for callers that want a live progress signal during a long fit.
 
         Returns:
             ALSRecommender: ``self``, to allow call chaining.
@@ -62,7 +64,7 @@ class ALSRecommender:
         # correctness property the HOLMES loop relies on, so this must hold for every fit — a
         # context manager guarantees that regardless of import order or garbage collection.
         with threadpoolctl.threadpool_limits(1, "blas"):
-            self._model.fit(train_ui, show_progress=False)
+            self._model.fit(train_ui, show_progress=show_progress)
         self._fitted = True
         return self
 
