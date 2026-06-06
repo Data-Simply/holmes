@@ -1,13 +1,8 @@
 [project]
-name = "agentic-hpo-in-the-loop"
-version = "0.1.0"
-description = "HOLMES: Hypothesis-driven Optimization via LLM-guided Model Exploration and Search"
-readme = "README.md"
 authors = [
     { name = "Murray Vanwyk", email = "murray@datasimply.co" },
-    { name = "Vasilis Papastefanopoulos", email = "vas@datasimply.co" }
+    { name = "Vasilis Papastefanopoulos", email = "vas@datasimply.co" },
 ]
-requires-python = ">=3.11"
 dependencies = [
     "huggingface-hub>=1.17.0",
     "implicit>=0.7.3",
@@ -19,24 +14,25 @@ dependencies = [
     "threadpoolctl>=3.6.0",
     "tqdm>=4.67.3",
 ]
+description = "HOLMES: Hypothesis-driven Optimization via LLM-guided Model Exploration and Search"
+name = "agentic-hpo-in-the-loop"
+readme = "README.md"
+requires-python = ">=3.11"
+version = "0.1.0"
 
 [project.scripts]
 holmes = "holmes.cli:main"
 
 [build-system]
-requires = ["uv_build>=0.11.8,<0.12.0"]
 build-backend = "uv_build"
+requires      = [ "uv_build>=0.11.8,<0.12.0" ]
 
 [tool.uv.build-backend]
-module-root = ""
 module-name = "holmes"
+module-root = ""
 
 [dependency-groups]
-dev = [
-    "pytest>=8.0.0",
-    "pytest-cov>=5.0.0",
-    "ruff>=0.6.0",
-]
+dev = [ "pre-commit>=4.6.0", "pytest>=8.0.0", "pytest-cov>=5.0.0", "ruff>=0.6.0" ]
 
 [tool.ruff]
 line-length    = 120
@@ -105,11 +101,11 @@ select = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"__init__.py"                = [ "D104", "F401", "F403", "F405" ]
-"holmes/cli.py"             = [ "T201" ]  # CLI prints to stdout by design
-"holmes/data/preprocess.py" = [ "T201" ]  # progress reporting to stdout
-"holmes/search/*"           = [ "T201" ]  # search progress to stdout
-"tests/*"                    = [ "ANN", "ARG", "D", "INP001", "PLR2004", "S101", "SLF001" ]
+"__init__.py"               = [ "D104", "F401", "F403", "F405" ]
+"holmes/cli.py"             = [ "T201" ]                                                   # CLI prints to stdout by design
+"holmes/data/preprocess.py" = [ "T201" ]                                                   # progress reporting to stdout
+"holmes/search/*"           = [ "T201" ]                                                   # search progress to stdout
+"tests/*"                   = [ "ANN", "ARG", "D", "INP001", "PLR2004", "S101", "SLF001" ]
 
 [tool.ruff.lint.pylint]
 max-args       = 15
@@ -138,8 +134,8 @@ venv     = ".venv"
 venvPath = "."
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts = "--cov=holmes"
+addopts   = "--cov=holmes"
+testpaths = [ "tests" ]
 
 [tool.coverage.run]
-source = ["holmes"]
+source = [ "holmes" ]

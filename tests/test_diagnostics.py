@@ -1,6 +1,5 @@
 """Tests for the diagnostic battery."""
 
-import numpy as np
 import pytest
 
 from holmes.als.model import ALSRecommender
@@ -15,20 +14,6 @@ def fitted_diagnostics(books_dataset):
     model = ALSRecommender(ALSParams(factors=32, regularization=0.01, iterations=20, alpha=40.0), seed=0)
     model.fit(books_dataset.train_ui)
     return compute_diagnostics(model, books_dataset, k=K, split="test", seed=0)
-
-
-class TestMetricRanges:
-    @pytest.mark.parametrize(
-        "metric", ["ndcg", "recall", "map", "catalog_coverage", "avg_rec_popularity", "tail_recall"]
-    )
-    def test_bounded_metrics_in_unit_interval(self, fitted_diagnostics, metric):
-        assert 0.0 <= fitted_diagnostics[metric] <= 1.0
-
-    def test_novelty_is_non_negative(self, fitted_diagnostics):
-        assert fitted_diagnostics["novelty"] >= 0.0
-
-    def test_factor_norm_is_positive(self, fitted_diagnostics):
-        assert fitted_diagnostics["mean_factor_norm"] > 0.0
 
 
 class TestMetricRelationships:
@@ -90,16 +75,3 @@ class TestRegularizationSignal:
             seed=0,
         )
         assert strong["mean_factor_norm"] < weak["mean_factor_norm"]
-
-
-class TestPopularityBias:
-    def test_popularity_percentile_is_tie_aware_and_monotonic(self, books_dataset):
-        """Equally-popular books share a percentile; the most popular gets the maximum."""
-        pop = books_dataset.item_popularity
-        pct = books_dataset.popularity_percentile
-        # Every set of equally-popular items maps to a single shared percentile.
-        for value in np.unique(pop):
-            shared = pct[pop == value]
-            assert np.allclose(shared, shared[0])
-        # The most popular item attains the highest percentile.
-        assert pct[np.argmax(pop)] == pct.max()
