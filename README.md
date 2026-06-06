@@ -1,6 +1,6 @@
 # HOLMES
 
-**HOLMES — Hypothesis-driven Optimization via LLM-guided Model Exploration and Search**
+HOLMES — **H**ypothesis-driven **O**ptimization via **L**LM-guided **M**odel **E**xploration and **S**earch
 
 HOLMES benchmarks hyperparameter optimization of an implicit-feedback **ALS recommender** on the
 Amazon Reviews 2023 dataset — any category (Books is the default; preprocess one or `--all` of them
@@ -107,7 +107,7 @@ uv run ruff format . && uv run ruff check .
 
 ## Project layout
 
-```
+```text
 holmes/
   config.py            # hyperparameter spaces, evaluation settings, ALSParams
   data/

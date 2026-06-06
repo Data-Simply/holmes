@@ -33,7 +33,7 @@ class Dataset:
     Attributes:
         train_ui: Rating-weighted CSR matrix of shape ``(n_users, n_items)`` of training
             interactions. Stored values are the raw star ratings (4 or 5 under the default
-            ``min_rating``); ``implicit.als`` consumes them as ``r_ui`` in ``c_ui = 1 + α·r_ui``.
+            ``min_rating``); ``implicit.als`` consumes them as ``r_ui`` in ``c_ui = 1 + alpha * r_ui``.
         val_users: User indices with a validation positive.
         val_items: Item indices held out for validation, aligned with ``val_users``.
         test_users: User indices with a test positive.
