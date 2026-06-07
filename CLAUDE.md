@@ -63,14 +63,13 @@ a real second use case demands it is cheap; removing an abstraction once code de
 ### Comparability is fair by design
 
 "Fair by design" means the invariants that make the four strategies comparable should be locked by
-construction and by tests, so a future edit can't silently break the comparison. The benchmark is only
-meaningful if grid, random, bayes, and HOLMES differ in **optimizer behavior alone** — same objective,
-same held-out split, same ranking cut-off, same search region, and same fit budget. Enforce this
-structurally first: every strategy scores through the shared `evaluate_config`; all continuous spaces
-derive from `_grid_hull(GRID_SPACE)`; the budget is the single `MAX_ITERATIONS` with no per-call
-override. Where a property can only hold by convention — e.g. `RANDOM_SPACE`/`BAYES_SPACE`/`HOLMES_SPACE`
-are deliberately distinct objects so a test `monkeypatch` on one doesn't bind the others — back it with a
-guardrail test (`TestComparabilityInvariants`) so drift fails loudly instead of quietly biasing results.
+construction and by tests, so a future edit can't silently break the comparison. Grid, random, bayes,
+and HOLMES must differ in **optimizer behavior alone** — same objective, held-out split, ranking
+cut-off, search region, and fit budget. Enforce this structurally: every strategy scores through the
+shared `evaluate_config`; all continuous spaces derive from `_grid_hull(GRID_SPACE)`; the budget is the
+single `MAX_ITERATIONS` with no per-call override. Where a property holds only by convention — e.g.
+`RANDOM_SPACE`/`BAYES_SPACE`/`HOLMES_SPACE` are distinct objects so a test `monkeypatch` on one doesn't
+bind the others — back it with a guardrail test (`TestComparabilityInvariants`) so drift fails loudly.
 
 ## Code Style Additions
 
@@ -95,8 +94,7 @@ These refine the global testing guidelines:
   instead; loosening it lazily hides real dtype regressions.
 - **Network is an external dependency.** Test the network-free helpers directly (e.g. the preprocessing
   `_k_core_filter` / `_leave_last_out_split`); do not hit Hugging Face in the test suite.
-- **Lock comparability invariants with guardrail tests.** A property that keeps the strategies fair but
-  holds only by convention (equal search spaces, the shared `MAX_ITERATIONS` budget, the common
-  hyperparameter set) must have a test that fails on drift — see `TestComparabilityInvariants` and the
-  *Comparability is fair by design* principle above. Derive the expected value from its source
-  (`_grid_hull(GRID_SPACE)`, `dataclasses.fields(ALSParams)`), never a hand-copied literal that can drift.
+- **Guardrail tests derive the expected value from its source.** When locking a comparability invariant
+  (see *Comparability is fair by design* and `TestComparabilityInvariants`), compute the expected value
+  from its origin (`_grid_hull(GRID_SPACE)`, `dataclasses.fields(ALSParams)`) — never a hand-copied
+  literal, which drifts silently from what it mirrors.
