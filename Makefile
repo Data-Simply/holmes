@@ -1,8 +1,8 @@
 # HOLMES experiment runner.
 #
 # Wraps the `holmes` CLI so the four strategies can be launched with one command each.
-# grid / random / bayes run unattended; holmes opens an interactive Claude Code session
-# primed to drive the agentic loop. Pure orchestration -- no changes to holmes/ code.
+# grid / random / bayes run unattended; holmes runs an interactive Claude session per
+# fit-seed x trial. Pure orchestration -- no changes to holmes/ code.
 #
 # Override any variable on the command line, e.g.:
 #   make grid DATA=data/processed/Electronics FIT_SEEDS="0 1 2 3 4"
@@ -15,14 +15,16 @@
 #              bayes --sampler-seed): which configs get tried. random/bayes
 #              sweep the full FIT_SEEDS x SEARCH_SEEDS cross product; grid is
 #              deterministic given the fit seed and ignores this.
+# TRIALS       HOLMES runs per fit seed. The LLM search has no integer seed, so
+#              repeated trials are how its search variance is characterized (the
+#              HOLMES analog of SEARCH_SEEDS).
 # RESULTS_DIR  where result JSON is written
-# TRAJECTORY   HOLMES append-only log
 # UV           runner; ensures the project env is used
 DATA         ?= data/processed/Books
 FIT_SEEDS    ?= 0 1 2
 SEARCH_SEEDS ?= 0
+TRIALS       ?= 3
 RESULTS_DIR  ?= results
-TRAJECTORY   ?= $(RESULTS_DIR)/trajectory.json
 UV           ?= uv run
 
 .DEFAULT_GOAL := help
@@ -37,7 +39,7 @@ help:
 	@echo "  grid        Grid search,   per fit seed         -> $(RESULTS_DIR)/grid-seed<N>.json"
 	@echo "  random      Random search, per fit x search seed -> $(RESULTS_DIR)/random-seed<N>-search<M>.json"
 	@echo "  bayes       Optuna TPE,    per fit x search seed -> $(RESULTS_DIR)/bayes-seed<N>-search<M>.json"
-	@echo "  holmes      Open a Claude Code session that drives the agentic loop."
+	@echo "  holmes      Interactive session per fit x trial -> $(RESULTS_DIR)/trajectory-seed<N>-trial<T>.json"
 	@echo "  baselines   Run grid, random, bayes serially (all seeds)."
 	@echo "  clean       Remove $(RESULTS_DIR)/*.json."
 	@echo
@@ -45,6 +47,7 @@ help:
 	@echo "  DATA         = $(DATA)"
 	@echo "  FIT_SEEDS    = $(FIT_SEEDS)   (ALS --seed; all strategies)"
 	@echo "  SEARCH_SEEDS = $(SEARCH_SEEDS)   (random/bayes search trajectory; grid ignores it)"
+	@echo "  TRIALS       = $(TRIALS)   (HOLMES runs per fit seed)"
 	@echo
 	@echo "Note: each fit is a full ALS model (multi-GB at real scale); the baseline"
 	@echo "targets fit once per seed, so they are long-running and block until done."
@@ -77,22 +80,19 @@ bayes:
 	done; done
 
 # --- HOLMES agentic loop ---------------------------------------------------
-# The loop needs an LLM between rounds, so this opens an interactive Claude Code session with a
-# pre-filled prompt; Claude then runs the loop autonomously per skill/SKILL.md and returns to the
-# REPL when done (exit with Ctrl-D). The prompt avoids backticks so the shell does not interpret it.
-define HOLMES_PROMPT
-Run the HOLMES agentic hyperparameter-tuning loop using the holmes-hpo skill (skill/SKILL.md). \
-Dataset --data is $(DATA); the trajectory log is $(TRAJECTORY). Start by running holmes ranges \
-to read the bounds and the max_iterations budget, seed iteration 1 with \
-"holmes heuristic --data $(DATA) --trajectory $(TRAJECTORY) --seed 0", then run the loop \
-autonomously per SKILL.md until the trajectory reaches max_iterations, and finish with a held-out \
-test eval and a short summary.
-endef
-export HOLMES_PROMPT
-
+# The loop needs an LLM between rounds, so each run is an interactive Claude session with a
+# pre-filled prompt; Claude drives the loop autonomously per skill/SKILL.md, then returns to the
+# REPL (Ctrl-D out to launch the next run). For a fair comparison with the baselines, sweep one
+# run per fit seed with TRIALS repeats each -- the repeats stand in for the search seed the LLM
+# does not have. Runs are sequential. The prompt avoids backticks/quotes so the shell does not
+# interpret it; $(DATA) is make-expanded while $$fs/$$t/$$traj interpolate in the loop's shell.
 holmes:
 	@mkdir -p $(RESULTS_DIR)
-	claude "$$HOLMES_PROMPT"
+	@for fs in $(FIT_SEEDS); do for t in $$(seq 1 $(TRIALS)); do \
+		traj=$(RESULTS_DIR)/trajectory-seed$$fs-trial$$t.json; \
+		echo ">>> holmes fit-seed=$$fs trial=$$t -> $$traj"; \
+		claude "Run the HOLMES agentic hyperparameter-tuning loop using the holmes-hpo skill (skill/SKILL.md). Dataset --data is $(DATA); the trajectory log is $$traj. Use --seed $$fs for every fit. Start by running holmes ranges to read the bounds and the max_iterations budget, seed iteration 1 by running holmes heuristic --data $(DATA) --trajectory $$traj --seed $$fs, then run the loop autonomously per SKILL.md until the trajectory reaches max_iterations, and finish with a held-out test eval and a short summary." || exit $$?; \
+	done; done
 
 # --- Baselines aggregate ---------------------------------------------------
 # The three unattended baselines, run serially. HOLMES is interactive, so it is its own target.
