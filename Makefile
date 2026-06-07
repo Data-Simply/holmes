@@ -10,27 +10,24 @@
 
 # --- Variables (override on the command line) ------------------------------
 # DATA        preprocessed dataset directory (passed as --data)
-# CATEGORY    category built by `make preprocess`
 # SEEDS       fit seeds; each strategy runs once per seed
 # RESULTS_DIR where per-seed result JSON is written
 # TRAJECTORY  HOLMES append-only log
 # UV          runner; ensures the project env is used
 DATA        ?= data/processed/Books
-CATEGORY    ?= Books
 SEEDS       ?= 0 1 2
 RESULTS_DIR ?= results
 TRAJECTORY  ?= $(RESULTS_DIR)/trajectory.json
 UV          ?= uv run
 
 .DEFAULT_GOAL := help
-.PHONY: help preprocess grid random bayes holmes all clean
+.PHONY: help grid random bayes holmes all clean
 
 # --- Help (default) --------------------------------------------------------
 help:
 	@echo "HOLMES experiment runner"
 	@echo
 	@echo "Targets:"
-	@echo "  preprocess  Build the interaction matrix for CATEGORY ($(CATEGORY))."
 	@echo "  grid        Grid search,   one fit per seed -> $(RESULTS_DIR)/grid-seed<N>.json"
 	@echo "  random      Random search, one fit per seed -> $(RESULTS_DIR)/random-seed<N>.json"
 	@echo "  bayes       Optuna TPE,    one fit per seed -> $(RESULTS_DIR)/bayes-seed<N>.json"
@@ -40,15 +37,10 @@ help:
 	@echo
 	@echo "Variables (current values):"
 	@echo "  DATA      = $(DATA)"
-	@echo "  CATEGORY  = $(CATEGORY)"
 	@echo "  SEEDS     = $(SEEDS)"
 	@echo
 	@echo "Note: each fit is a full ALS model (multi-GB at real scale); the baseline"
 	@echo "targets fit once per seed, so they are long-running and block until done."
-
-# --- Preprocess ------------------------------------------------------------
-preprocess:
-	$(UV) holmes preprocess --category $(CATEGORY)
 
 # --- Baselines (one fit per seed) ------------------------------------------
 grid:
