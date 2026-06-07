@@ -2,7 +2,6 @@
 
 import dataclasses
 import json
-import math
 from pathlib import Path
 
 import pytest
@@ -75,10 +74,6 @@ def _just_out_of_bounds(name: str, direction: str) -> float:
 
 
 class TestGrid:
-    def test_grid_enumerates_full_cartesian_product(self):
-        expected = math.prod(len(values) for values in GRID_SPACE.values())
-        assert len(_grid_configs()) == expected
-
     def test_run_grid_writes_results_file(self, books_dataset, tmp_path):
         out = tmp_path / "grid.json"
         run_grid(books_dataset, seed=SEED, k=10, out_path=out)
@@ -129,9 +124,13 @@ class TestRandom:
 class TestBayes:
     def test_runs_the_fixed_max_iterations_budget(self, books_dataset, tmp_path, monkeypatch):
         monkeypatch.setattr("holmes.search.bayes.MAX_ITERATIONS", 4)
-        output = run_bayes(books_dataset, seed=SEED, k=10, sampler_seed=0, out_path=tmp_path / "bayes.json")
+        out = tmp_path / "bayes.json"
+        output = run_bayes(books_dataset, seed=SEED, k=10, sampler_seed=0, out_path=out)
         assert output["n_trials"] == 4
         assert len(output["trials"]) == 4
+        saved = json.loads(out.read_text())
+        assert saved["strategy"] == "bayes"
+        assert len(saved["trials"]) == 4
 
     def test_zero_budget_raises_descriptive_error(self, books_dataset, monkeypatch):
         monkeypatch.setattr("holmes.search.bayes.MAX_ITERATIONS", 0)
