@@ -1,4 +1,4 @@
-"""Command-line entry point: ``holmes preprocess|grid|bayes|holmes-iter|heuristic|ranges|annotate|eval``."""
+"""Command-line entry point: ``holmes preprocess|grid|random|bayes|holmes-iter|heuristic|ranges|annotate|eval``."""
 
 from __future__ import annotations
 
@@ -23,6 +23,7 @@ from holmes.search.grid import run_grid
 from holmes.search.harness import evaluate_config
 from holmes.search.heuristics import initial_hypothesis, initial_params
 from holmes.search.holmes import VALIDATION_STATUSES, annotate_iteration, run_iteration
+from holmes.search.random_search import run_random
 
 
 def _add_common_data_arg(parser: argparse.ArgumentParser) -> None:
@@ -99,15 +100,21 @@ def _build_parser() -> argparse.ArgumentParser:
     grid.add_argument("--k", type=int, default=TOP_K, help="Ranking cut-off.")
     grid.add_argument("--out", type=Path, default=RESULTS_DIR / "grid.json", help="Results JSON path.")
 
+    random = sub.add_parser("random", help="Run the random-search baseline.")
+    _add_common_data_arg(random)
+    _add_seed_arg(random)
+    random.add_argument(
+        "--search-seed",
+        type=int,
+        default=0,
+        help="Seed for the sampler drawing configs (controls the search trajectory, distinct from the fit --seed).",
+    )
+    random.add_argument("--k", type=int, default=TOP_K, help="Ranking cut-off.")
+    random.add_argument("--out", type=Path, default=RESULTS_DIR / "random.json", help="Results JSON path.")
+
     bayes = sub.add_parser("bayes", help="Run the Optuna Bayesian-optimization baseline.")
     _add_common_data_arg(bayes)
     _add_seed_arg(bayes)
-    bayes.add_argument(
-        "--trials",
-        type=int,
-        default=MAX_ITERATIONS,
-        help=f"Number of Optuna trials (default {MAX_ITERATIONS}, matching the grid and HOLMES caps).",
-    )
     bayes.add_argument(
         "--sampler-seed",
         type=int,
@@ -261,12 +268,21 @@ def _cmd_grid(args: argparse.Namespace) -> None:
     run_grid(Dataset.load(args.data), seed=args.seed, k=args.k, out_path=args.out)
 
 
+def _cmd_random(args: argparse.Namespace) -> None:
+    run_random(
+        Dataset.load(args.data),
+        seed=args.seed,
+        search_seed=args.search_seed,
+        k=args.k,
+        out_path=args.out,
+    )
+
+
 def _cmd_bayes(args: argparse.Namespace) -> None:
     run_bayes(
         Dataset.load(args.data),
         seed=args.seed,
         sampler_seed=args.sampler_seed,
-        n_trials=args.trials,
         k=args.k,
         out_path=args.out,
     )
@@ -380,6 +396,7 @@ def _cmd_eval(args: argparse.Namespace) -> None:
 _COMMANDS = {
     "preprocess": _cmd_preprocess,
     "grid": _cmd_grid,
+    "random": _cmd_random,
     "bayes": _cmd_bayes,
     "holmes-iter": _cmd_holmes_iter,
     "heuristic": _cmd_heuristic,

@@ -41,7 +41,6 @@ def _objective(
     dataset: Dataset,
     seed: int,
     k: int,
-    n_trials: int,
     trials: list[EvalResult],
 ) -> float:
     """Evaluate one Optuna trial, record it, and return its validation score.
@@ -51,7 +50,6 @@ def _objective(
         dataset: Preprocessed interaction matrix.
         seed: Random seed for the fit.
         k: Ranking cut-off.
-        n_trials: Total trial count, used only for progress reporting.
         trials: Mutable accumulator the evaluated result is appended to.
 
     Returns:
@@ -64,7 +62,7 @@ def _objective(
     metrics = result["metrics"]
     timing = f"fit={metrics['fit_time_seconds']:.2f}s eval={metrics['eval_time_seconds']:.2f}s"
     print(
-        f"[bayes {trial.number + 1}/{n_trials}] {params.to_dict()} -> val ndcg={result['score']:.4f}  {timing}",
+        f"[bayes {trial.number + 1}/{MAX_ITERATIONS}] {params.to_dict()} -> val ndcg={result['score']:.4f}  {timing}",
     )
     return result["score"]
 
@@ -74,18 +72,18 @@ def run_bayes(
     *,
     seed: int = DEFAULT_SEED,
     sampler_seed: int = 0,
-    n_trials: int = MAX_ITERATIONS,
     k: int = TOP_K,
     out_path: Path | None = None,
 ) -> SearchOutput:
     """Run an Optuna study maximizing held-out NDCG@K and return the trial log.
+
+    The count is the shared fixed budget :data:`holmes.config.MAX_ITERATIONS`.
 
     Args:
         dataset: Preprocessed interaction matrix.
         seed: Random seed for each trial's fit.
         sampler_seed: Seed for the TPE sampler, controlling the search trajectory (distinct from the
             per-fit ``seed``).
-        n_trials: Number of Optuna trials.
         k: Ranking cut-off.
         out_path: Optional path to write the full results JSON.
 
@@ -97,8 +95,8 @@ def run_bayes(
 
     study = optuna.create_study(direction="maximize", sampler=optuna.samplers.TPESampler(seed=sampler_seed))
     study.optimize(
-        partial(_objective, dataset=dataset, seed=seed, k=k, n_trials=n_trials, trials=trials),
-        n_trials=n_trials,
+        partial(_objective, dataset=dataset, seed=seed, k=k, trials=trials),
+        n_trials=MAX_ITERATIONS,
     )
 
     best = select_best(trials)

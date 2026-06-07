@@ -1,18 +1,53 @@
 """Tests for the grid, Bayesian, and HOLMES search drivers."""
 
+import dataclasses
 import json
-import math
 from pathlib import Path
 
 import pytest
 
-from holmes.config import GRID_SPACE
+from holmes.config import (
+    BAYES_SPACE,
+    GRID_SPACE,
+    HOLMES_SPACE,
+    MAX_ITERATIONS,
+    RANDOM_SPACE,
+    ALSParams,
+    _grid_hull,
+)
 from holmes.search import holmes as holmes_module
 from holmes.search.bayes import run_bayes
 from holmes.search.grid import _grid_configs, run_grid
 from holmes.search.holmes import annotate_iteration, load_trajectory, run_iteration
+from holmes.search.random_search import run_random
 
 SEED = 0
+
+# The single source of truth for which hyperparameters every strategy tunes; derived from ALSParams
+# so adding a field can't silently leave a space behind.
+_ALS_HYPERPARAMETERS = {field.name for field in dataclasses.fields(ALSParams)}
+
+
+class TestComparabilityInvariants:
+    """Lock the by-construction guarantees that make grid/random/bayes/HOLMES a fair comparison —
+    same region, same budget, same hyperparameters. A future edit that breaks one fails here rather
+    than silently skewing the benchmark."""
+
+    def test_all_continuous_spaces_equal_the_grid_hull(self):
+        # grid is discrete; random/bayes/HOLMES optimize its continuous hull. The three hulls are
+        # deliberately distinct objects (so monkeypatching one doesn't bind the others) but MUST
+        # stay equal by value, or the comparison measures search-space coverage, not optimizer skill.
+        expected = _grid_hull(GRID_SPACE)
+        assert RANDOM_SPACE == BAYES_SPACE == HOLMES_SPACE == expected
+
+    def test_every_space_covers_exactly_the_als_hyperparameters(self):
+        for space in (GRID_SPACE, RANDOM_SPACE, BAYES_SPACE, HOLMES_SPACE):
+            assert set(space.keys()) == _ALS_HYPERPARAMETERS
+
+    def test_grid_enumerates_exactly_the_shared_budget(self):
+        # random/bayes read MAX_ITERATIONS directly and HOLMES caps at it; grid must enumerate the
+        # same count or the fixed-budget comparison is off by construction.
+        assert len(_grid_configs()) == MAX_ITERATIONS
 
 
 @pytest.fixture
@@ -39,10 +74,6 @@ def _just_out_of_bounds(name: str, direction: str) -> float:
 
 
 class TestGrid:
-    def test_grid_enumerates_full_cartesian_product(self):
-        expected = math.prod(len(values) for values in GRID_SPACE.values())
-        assert len(_grid_configs()) == expected
-
     def test_run_grid_writes_results_file(self, books_dataset, tmp_path):
         out = tmp_path / "grid.json"
         run_grid(books_dataset, seed=SEED, k=10, out_path=out)
@@ -52,23 +83,59 @@ class TestGrid:
         assert len(saved["trials"]) == len(_grid_configs())
 
 
-class TestBayes:
-    def test_run_bayes_runs_requested_trials(self, books_dataset, tmp_path):
-        n_trials = 4
-        output = run_bayes(
-            books_dataset,
-            seed=SEED,
-            n_trials=n_trials,
-            k=10,
-            sampler_seed=0,
-            out_path=tmp_path / "bayes.json",
-        )
-        assert output["n_trials"] == n_trials
-        assert len(output["trials"]) == n_trials
+class TestRandom:
+    def test_runs_the_fixed_max_iterations_budget(self, books_dataset, tmp_path, monkeypatch):
+        # The budget is the shared MAX_ITERATIONS, not a per-call arg; shrink it so the test
+        # fits a handful of models instead of the full budget.
+        monkeypatch.setattr("holmes.search.random_search.MAX_ITERATIONS", 4)
+        out = tmp_path / "random.json"
+        output = run_random(books_dataset, seed=SEED, search_seed=0, k=10, out_path=out)
+        assert output["n_trials"] == 4
+        assert len(output["trials"]) == 4
+        saved = json.loads(out.read_text())
+        assert saved["strategy"] == "random"
+        assert len(saved["trials"]) == 4
 
-    def test_zero_trials_raises_descriptive_error(self, books_dataset):
+    def test_sampled_configs_stay_within_bounds(self, books_dataset, monkeypatch):
+        monkeypatch.setattr("holmes.search.random_search.MAX_ITERATIONS", 8)
+        output = run_random(books_dataset, seed=SEED, search_seed=0, k=10)
+        for trial in output["trials"]:
+            for name, (low, high) in RANDOM_SPACE.items():
+                assert low <= trial["params"][name] <= high
+
+    def test_search_seed_makes_the_trajectory_reproducible(self, books_dataset, monkeypatch):
+        monkeypatch.setattr("holmes.search.random_search.MAX_ITERATIONS", 5)
+        first = run_random(books_dataset, seed=SEED, search_seed=7, k=10)
+        second = run_random(books_dataset, seed=SEED, search_seed=7, k=10)
+        assert [t["params"] for t in first["trials"]] == [t["params"] for t in second["trials"]]
+
+    def test_different_search_seeds_draw_different_configs(self, books_dataset, monkeypatch):
+        monkeypatch.setattr("holmes.search.random_search.MAX_ITERATIONS", 5)
+        first = run_random(books_dataset, seed=SEED, search_seed=1, k=10)
+        second = run_random(books_dataset, seed=SEED, search_seed=2, k=10)
+        assert [t["params"] for t in first["trials"]] != [t["params"] for t in second["trials"]]
+
+    def test_zero_budget_raises_descriptive_error(self, books_dataset, monkeypatch):
+        monkeypatch.setattr("holmes.search.random_search.MAX_ITERATIONS", 0)
         with pytest.raises(ValueError, match="No trials"):
-            run_bayes(books_dataset, seed=SEED, n_trials=0, k=10, sampler_seed=0)
+            run_random(books_dataset, seed=SEED, search_seed=0, k=10)
+
+
+class TestBayes:
+    def test_runs_the_fixed_max_iterations_budget(self, books_dataset, tmp_path, monkeypatch):
+        monkeypatch.setattr("holmes.search.bayes.MAX_ITERATIONS", 4)
+        out = tmp_path / "bayes.json"
+        output = run_bayes(books_dataset, seed=SEED, k=10, sampler_seed=0, out_path=out)
+        assert output["n_trials"] == 4
+        assert len(output["trials"]) == 4
+        saved = json.loads(out.read_text())
+        assert saved["strategy"] == "bayes"
+        assert len(saved["trials"]) == 4
+
+    def test_zero_budget_raises_descriptive_error(self, books_dataset, monkeypatch):
+        monkeypatch.setattr("holmes.search.bayes.MAX_ITERATIONS", 0)
+        with pytest.raises(ValueError, match="No trials"):
+            run_bayes(books_dataset, seed=SEED, k=10, sampler_seed=0)
 
 
 class TestHolmesIteration:
