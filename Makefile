@@ -91,7 +91,7 @@ holmes:
 	@for fs in $(FIT_SEEDS); do for t in $$(seq 1 $(TRIALS)); do \
 		traj=$(RESULTS_DIR)/trajectory-seed$$fs-trial$$t.json; \
 		echo ">>> holmes fit-seed=$$fs trial=$$t -> $$traj"; \
-		claude "Run the HOLMES agentic hyperparameter-tuning loop using the holmes-hpo skill (skill/SKILL.md). Dataset --data is $(DATA); the trajectory log is $$traj. Use --seed $$fs for every fit. Start by running holmes ranges to read the bounds and the max_iterations budget, seed iteration 1 by running holmes heuristic --data $(DATA) --trajectory $$traj --seed $$fs, then run the loop autonomously per SKILL.md until the trajectory reaches max_iterations, and finish with a held-out test eval and a short summary." || exit $$?; \
+		claude "Run the HOLMES agentic hyperparameter-tuning loop using the holmes-hpo skill (skill/SKILL.md). Dataset --data is $(DATA); the trajectory log is $$traj. Use --seed $$fs for every fit, and prefix every holmes command with '$(UV)'. Start by running $(UV) holmes ranges to read the bounds and the max_iterations budget, seed iteration 1 by running $(UV) holmes heuristic --data $(DATA) --trajectory $$traj --seed $$fs, then run the loop autonomously per SKILL.md until the trajectory reaches max_iterations, and finish with a held-out test eval and a short summary." || exit $$?; \
 	done; done
 
 # --- Baselines aggregate ---------------------------------------------------
