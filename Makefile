@@ -59,6 +59,7 @@ help:
 	@echo
 	@echo "Note: each fit is a full ALS model (multi-GB at real scale); the baseline"
 	@echo "targets fit once per seed, so they are long-running and block until done."
+	@echo "Each run logs [n/total] progress across the category x seed sweep."
 
 # --- Baselines -------------------------------------------------------------
 # grid runs once per fit seed (it is deterministic given the seed). random and bayes sweep the
@@ -66,31 +67,37 @@ help:
 # A run whose --out file already exists is skipped, so reruns resume after a failure.
 grid:
 	@$(NEED_CATS)
-	@for cat in $(CATEGORIES); do for fs in $(FIT_SEEDS); do \
+	@total=$$(( $(words $(CATEGORIES)) * $(words $(FIT_SEEDS)) )); i=0; \
+	for cat in $(CATEGORIES); do for fs in $(FIT_SEEDS); do \
+		i=$$((i+1)); \
 		out=$(RESULTS_DIR)/$$cat/grid-seed$$fs.json; \
-		if [ -f "$$out" ]; then echo "=== grid   $$cat seed=$$fs  (skip: exists)"; continue; fi; \
+		if [ -f "$$out" ]; then echo "[$$i/$$total] === grid   $$cat seed=$$fs  (skip: exists)"; continue; fi; \
 		mkdir -p $(RESULTS_DIR)/$$cat; \
-		echo ">>> grid   $$cat fit-seed=$$fs"; \
+		echo "[$$i/$$total] >>> grid   $$cat fit-seed=$$fs"; \
 		$(UV) holmes grid --data $(PROCESSED_DIR)/$$cat --seed $$fs --out $$out || exit $$?; \
 	done; done
 
 random:
 	@$(NEED_CATS)
-	@for cat in $(CATEGORIES); do for fs in $(FIT_SEEDS); do for ss in $(SEARCH_SEEDS); do \
+	@total=$$(( $(words $(CATEGORIES)) * $(words $(FIT_SEEDS)) * $(words $(SEARCH_SEEDS)) )); i=0; \
+	for cat in $(CATEGORIES); do for fs in $(FIT_SEEDS); do for ss in $(SEARCH_SEEDS); do \
+		i=$$((i+1)); \
 		out=$(RESULTS_DIR)/$$cat/random-seed$$fs-search$$ss.json; \
-		if [ -f "$$out" ]; then echo "=== random $$cat seed=$$fs search=$$ss  (skip: exists)"; continue; fi; \
+		if [ -f "$$out" ]; then echo "[$$i/$$total] === random $$cat seed=$$fs search=$$ss  (skip: exists)"; continue; fi; \
 		mkdir -p $(RESULTS_DIR)/$$cat; \
-		echo ">>> random $$cat fit-seed=$$fs search-seed=$$ss"; \
+		echo "[$$i/$$total] >>> random $$cat fit-seed=$$fs search-seed=$$ss"; \
 		$(UV) holmes random --data $(PROCESSED_DIR)/$$cat --seed $$fs --search-seed $$ss --out $$out || exit $$?; \
 	done; done; done
 
 bayes:
 	@$(NEED_CATS)
-	@for cat in $(CATEGORIES); do for fs in $(FIT_SEEDS); do for ss in $(SEARCH_SEEDS); do \
+	@total=$$(( $(words $(CATEGORIES)) * $(words $(FIT_SEEDS)) * $(words $(SEARCH_SEEDS)) )); i=0; \
+	for cat in $(CATEGORIES); do for fs in $(FIT_SEEDS); do for ss in $(SEARCH_SEEDS); do \
+		i=$$((i+1)); \
 		out=$(RESULTS_DIR)/$$cat/bayes-seed$$fs-search$$ss.json; \
-		if [ -f "$$out" ]; then echo "=== bayes  $$cat seed=$$fs search=$$ss  (skip: exists)"; continue; fi; \
+		if [ -f "$$out" ]; then echo "[$$i/$$total] === bayes  $$cat seed=$$fs search=$$ss  (skip: exists)"; continue; fi; \
 		mkdir -p $(RESULTS_DIR)/$$cat; \
-		echo ">>> bayes  $$cat fit-seed=$$fs sampler-seed=$$ss"; \
+		echo "[$$i/$$total] >>> bayes  $$cat fit-seed=$$fs sampler-seed=$$ss"; \
 		$(UV) holmes bayes --data $(PROCESSED_DIR)/$$cat --seed $$fs --sampler-seed $$ss --out $$out || exit $$?; \
 	done; done; done
 
@@ -107,13 +114,15 @@ bayes:
 holmes:
 	@$(NEED_CATS)
 	@maxit=$$($(UV) python -c "from holmes.config import MAX_ITERATIONS; print(MAX_ITERATIONS)"); \
+	total=$$(( $(words $(CATEGORIES)) * $(words $(FIT_SEEDS)) * $(TRIALS) )); i=0; \
 	for cat in $(CATEGORIES); do for fs in $(FIT_SEEDS); do for t in $$(seq 1 $(TRIALS)); do \
+		i=$$((i+1)); \
 		traj=$(RESULTS_DIR)/$$cat/trajectory-seed$$fs-trial$$t.json; \
 		if [ -f "$$traj" ]; then n=$$($(UV) python -c "import json; print(len(json.load(open('$$traj'))))" 2>/dev/null || echo 0); else n=0; fi; \
-		if [ "$$n" -ge "$$maxit" ]; then echo "=== holmes $$cat seed=$$fs trial=$$t  (skip: complete, $$n/$$maxit)"; continue; fi; \
+		if [ "$$n" -ge "$$maxit" ]; then echo "[$$i/$$total] === holmes $$cat seed=$$fs trial=$$t  (skip: complete, $$n/$$maxit)"; continue; fi; \
 		mkdir -p $(RESULTS_DIR)/$$cat; \
 		datadir=$(PROCESSED_DIR)/$$cat; \
-		echo ">>> holmes $$cat fit-seed=$$fs trial=$$t  ($$n/$$maxit done) -> $$traj"; \
+		echo "[$$i/$$total] >>> holmes $$cat fit-seed=$$fs trial=$$t  ($$n/$$maxit done) -> $$traj"; \
 		claude "Run the HOLMES agentic hyperparameter-tuning loop using the holmes-hpo skill (skill/SKILL.md). Dataset --data is $$datadir; the trajectory log is $$traj, which currently holds $$n of $$maxit iterations. Use --seed $$fs for every fit, and prefix every holmes command with '$(UV)'. First run $(UV) holmes ranges to read the bounds and the max_iterations budget. If the trajectory is empty, seed iteration 1 by running $(UV) holmes heuristic --data $$datadir --trajectory $$traj --seed $$fs; otherwise do NOT re-run heuristic -- read the existing trajectory and continue from where it left off, with $(UV) holmes holmes-iter --trajectory $$traj --seed $$fs. Run the loop autonomously per SKILL.md until the trajectory reaches max_iterations, and finish with a held-out test eval and a short summary." || exit $$?; \
 	done; done; done
 
