@@ -8,9 +8,9 @@ not repeat the global guide.
 
 HOLMES ("Hypothesis-driven Optimization via LLM-guided Model Exploration and Search") benchmarks
 hyperparameter optimization of an implicit-feedback **ALS book recommender** (Amazon Reviews 2023,
-Books) across three strategies — grid search, Bayesian optimization (Optuna), and the agentic HOLMES
-loop. Every strategy optimizes the same objective (held-out NDCG@10) on the same splits via the
-shared `ALSRecommender`, diagnostic battery, and evaluation harness.
+Books) across four strategies — grid search, random search, Bayesian optimization (Optuna), and the
+agentic HOLMES loop. Every strategy optimizes the same objective (held-out NDCG@10) on the same
+splits via the shared `ALSRecommender`, diagnostic battery, and evaluation harness.
 
 Package layout: `holmes/{config,cli}.py`, `holmes/data/`, `holmes/als/`, `holmes/metrics/`,
 `holmes/search/`. The agentic loop is driven by an LLM via `skill/SKILL.md`,
@@ -33,7 +33,7 @@ Polars ingestion lazy until indices are assigned, cache matrix-wide arrays on `D
 - Run all tests: `uv run pytest`
 - Run a specific test: `uv run pytest -k "test_name"` (don't guess full node paths)
 - Lint and format: `uv run ruff format . && uv run ruff check .`
-- Run the CLI: `uv run holmes <preprocess|grid|bayes|holmes-iter|heuristic|eval> ...`
+- Run the CLI: `uv run holmes <preprocess|grid|random|bayes|holmes-iter|heuristic|eval> ...`
 - Always use `uv run` so the correct environment and dependencies are used. Never call `pip`.
 
 ## Architecture & Design Principles
@@ -60,6 +60,18 @@ Apply this lens to every change:
 When in doubt about whether a piece of complexity is earning its keep, leave it out. Adding it back when
 a real second use case demands it is cheap; removing an abstraction once code depends on its shape is not.
 
+### Comparability is fair by design
+
+"Fair by design" means the invariants that make the four strategies comparable should be locked by
+construction and by tests, so a future edit can't silently break the comparison. The benchmark is only
+meaningful if grid, random, bayes, and HOLMES differ in **optimizer behavior alone** — same objective,
+same held-out split, same ranking cut-off, same search region, and same fit budget. Enforce this
+structurally first: every strategy scores through the shared `evaluate_config`; all continuous spaces
+derive from `_grid_hull(GRID_SPACE)`; the budget is the single `MAX_ITERATIONS` with no per-call
+override. Where a property can only hold by convention — e.g. `RANDOM_SPACE`/`BAYES_SPACE`/`HOLMES_SPACE`
+are deliberately distinct objects so a test `monkeypatch` on one doesn't bind the others — back it with a
+guardrail test (`TestComparabilityInvariants`) so drift fails loudly instead of quietly biasing results.
+
 ## Code Style Additions
 
 - **No nested function definitions.** A `def` (or `async def`) must not appear inside another function's
@@ -83,3 +95,8 @@ These refine the global testing guidelines:
   instead; loosening it lazily hides real dtype regressions.
 - **Network is an external dependency.** Test the network-free helpers directly (e.g. the preprocessing
   `_k_core_filter` / `_leave_last_out_split`); do not hit Hugging Face in the test suite.
+- **Lock comparability invariants with guardrail tests.** A property that keeps the strategies fair but
+  holds only by convention (equal search spaces, the shared `MAX_ITERATIONS` budget, the common
+  hyperparameter set) must have a test that fails on drift — see `TestComparabilityInvariants` and the
+  *Comparability is fair by design* principle above. Derive the expected value from its source
+  (`_grid_hull(GRID_SPACE)`, `dataclasses.fields(ALSParams)`), never a hand-copied literal that can drift.

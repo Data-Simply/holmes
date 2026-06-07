@@ -1,5 +1,6 @@
 """Tests for the grid, Bayesian, and HOLMES search drivers."""
 
+import dataclasses
 import json
 import math
 from pathlib import Path
@@ -12,6 +13,7 @@ from holmes.config import (
     HOLMES_SPACE,
     MAX_ITERATIONS,
     RANDOM_SPACE,
+    ALSParams,
     _grid_hull,
 )
 from holmes.search import holmes as holmes_module
@@ -22,7 +24,9 @@ from holmes.search.random_search import run_random
 
 SEED = 0
 
-_ALS_HYPERPARAMETERS = {"factors", "regularization", "iterations", "alpha"}
+# The single source of truth for which hyperparameters every strategy tunes; derived from ALSParams
+# so adding a field can't silently leave a space behind.
+_ALS_HYPERPARAMETERS = {field.name for field in dataclasses.fields(ALSParams)}
 
 
 class TestComparabilityInvariants:
