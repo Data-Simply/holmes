@@ -37,7 +37,7 @@ NEED_CATS = test -n "$(CATEGORIES)" || { echo "No preprocessed categories under 
 
 .DEFAULT_GOAL := help
 .NOTPARALLEL:  # baselines fit multi-GB ALS models; never run them concurrently
-.PHONY: help grid random bayes holmes baselines clean
+.PHONY: help grid random bayes holmes baselines
 
 # --- Help (default) --------------------------------------------------------
 help:
@@ -49,7 +49,6 @@ help:
 	@echo "  bayes       Optuna TPE,    per fit x search seed -> $(RESULTS_DIR)/<cat>/bayes-seed<N>-search<M>.json"
 	@echo "  holmes      Interactive session per fit x trial -> $(RESULTS_DIR)/<cat>/trajectory-seed<N>-trial<T>.json"
 	@echo "  baselines   Run grid, random, bayes serially (all categories/seeds)."
-	@echo "  clean       Remove result JSON under $(RESULTS_DIR)."
 	@echo
 	@echo "Variables (current values):"
 	@echo "  PROCESSED_DIR = $(PROCESSED_DIR)"
@@ -100,24 +99,24 @@ bayes:
 # pre-filled prompt; Claude drives the loop autonomously per skill/SKILL.md, then returns to the
 # REPL (Ctrl-D out to launch the next run). For a fair comparison with the baselines, sweep one
 # run per category x fit seed with TRIALS repeats each -- the repeats stand in for the search seed
-# the LLM does not have. Runs are sequential, and any trajectory that already exists is skipped.
-# The prompt avoids backticks/quotes so the shell does not interpret it; $(PROCESSED_DIR)/$(UV)
-# are make-expanded while $$cat/$$fs/$$t/$$traj/$$datadir interpolate in the loop's shell.
+# the LLM does not have. Runs are sequential. Unlike the baselines (one out file written only at
+# completion), the trajectory grows from iteration 1, so completion is "trajectory length ==
+# MAX_ITERATIONS", not mere existence: complete trajectories are skipped while incomplete ones
+# resume from where they left off. The prompt avoids backticks/quotes so the shell does not
+# interpret it; $(PROCESSED_DIR)/$(UV) are make-expanded while the $$-names interpolate in the shell.
 holmes:
 	@$(NEED_CATS)
-	@for cat in $(CATEGORIES); do for fs in $(FIT_SEEDS); do for t in $$(seq 1 $(TRIALS)); do \
+	@maxit=$$($(UV) python -c "from holmes.config import MAX_ITERATIONS; print(MAX_ITERATIONS)"); \
+	for cat in $(CATEGORIES); do for fs in $(FIT_SEEDS); do for t in $$(seq 1 $(TRIALS)); do \
 		traj=$(RESULTS_DIR)/$$cat/trajectory-seed$$fs-trial$$t.json; \
-		if [ -f "$$traj" ]; then echo "=== holmes $$cat seed=$$fs trial=$$t  (skip: exists)"; continue; fi; \
+		if [ -f "$$traj" ]; then n=$$($(UV) python -c "import json; print(len(json.load(open('$$traj'))))" 2>/dev/null || echo 0); else n=0; fi; \
+		if [ "$$n" -ge "$$maxit" ]; then echo "=== holmes $$cat seed=$$fs trial=$$t  (skip: complete, $$n/$$maxit)"; continue; fi; \
 		mkdir -p $(RESULTS_DIR)/$$cat; \
 		datadir=$(PROCESSED_DIR)/$$cat; \
-		echo ">>> holmes $$cat fit-seed=$$fs trial=$$t -> $$traj"; \
-		claude "Run the HOLMES agentic hyperparameter-tuning loop using the holmes-hpo skill (skill/SKILL.md). Dataset --data is $$datadir; the trajectory log is $$traj. Use --seed $$fs for every fit, and prefix every holmes command with '$(UV)'. Start by running $(UV) holmes ranges to read the bounds and the max_iterations budget, seed iteration 1 by running $(UV) holmes heuristic --data $$datadir --trajectory $$traj --seed $$fs, then run the loop autonomously per SKILL.md until the trajectory reaches max_iterations, and finish with a held-out test eval and a short summary." || exit $$?; \
+		echo ">>> holmes $$cat fit-seed=$$fs trial=$$t  ($$n/$$maxit done) -> $$traj"; \
+		claude "Run the HOLMES agentic hyperparameter-tuning loop using the holmes-hpo skill (skill/SKILL.md). Dataset --data is $$datadir; the trajectory log is $$traj, which currently holds $$n of $$maxit iterations. Use --seed $$fs for every fit, and prefix every holmes command with '$(UV)'. First run $(UV) holmes ranges to read the bounds and the max_iterations budget. If the trajectory is empty, seed iteration 1 by running $(UV) holmes heuristic --data $$datadir --trajectory $$traj --seed $$fs; otherwise do NOT re-run heuristic -- read the existing trajectory and continue from where it left off, with $(UV) holmes holmes-iter --trajectory $$traj --seed $$fs. Run the loop autonomously per SKILL.md until the trajectory reaches max_iterations, and finish with a held-out test eval and a short summary." || exit $$?; \
 	done; done; done
 
 # --- Baselines aggregate ---------------------------------------------------
 # The three unattended baselines, run serially. HOLMES is interactive, so it is its own target.
 baselines: grid random bayes
-
-# --- Clean -----------------------------------------------------------------
-clean:
-	rm -f $(RESULTS_DIR)/*.json $(RESULTS_DIR)/*/*.json
