@@ -79,8 +79,8 @@ uv run holmes grid --data data/processed/Books --seed 0
 uv run holmes random --data data/processed/Books --seed 0 --search-seed 0
 
 # 2c. Bayesian-optimization baseline (--seed is the per-fit seed; --sampler-seed is the TPE
-#     search trajectory).
-uv run holmes bayes --data data/processed/Books --trials 30 --seed 0 --sampler-seed 0
+#     search trajectory). Like grid and random, it always runs the shared fit budget.
+uv run holmes bayes --data data/processed/Books --seed 0 --sampler-seed 0
 
 # 2d. The agentic HOLMES loop is driven by Claude Code via skill/SKILL.md. Each round runs
 #     ONE iteration, appending diagnostics to an append-only trajectory log:

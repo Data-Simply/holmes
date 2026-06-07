@@ -116,12 +116,6 @@ def _build_parser() -> argparse.ArgumentParser:
     _add_common_data_arg(bayes)
     _add_seed_arg(bayes)
     bayes.add_argument(
-        "--trials",
-        type=int,
-        default=MAX_ITERATIONS,
-        help=f"Number of Optuna trials (default {MAX_ITERATIONS}, matching the grid and HOLMES caps).",
-    )
-    bayes.add_argument(
         "--sampler-seed",
         type=int,
         default=0,
@@ -287,11 +281,12 @@ def _cmd_random(args: argparse.Namespace) -> None:
 
 
 def _cmd_bayes(args: argparse.Namespace) -> None:
+    # Like grid and random, bayes always runs the shared MAX_ITERATIONS budget (run_bayes's
+    # default) so the three-way comparison is at a fixed fit budget.
     run_bayes(
         Dataset.load(args.data),
         seed=args.seed,
         sampler_seed=args.sampler_seed,
-        n_trials=args.trials,
         k=args.k,
         out_path=args.out,
     )
