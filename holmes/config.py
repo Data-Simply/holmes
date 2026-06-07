@@ -123,10 +123,11 @@ def _grid_hull(grid: dict[str, list[float]]) -> dict[str, tuple[float, float]]:
     return {name: (min(values), max(values)) for name, values in grid.items()}
 
 
-# --- Bayesian-search space (Optuna) and HOLMES agentic-search space --------
-# Both are the continuous hull of GRID_SPACE so the three strategies optimize over the same
+# --- Random-, Bayesian- (Optuna), and HOLMES agentic-search spaces ---------
+# All three are the continuous hull of GRID_SPACE so every strategy optimizes over the same
 # region — the comparison isolates optimizer behavior from search-space coverage. They are
 # kept as distinct names so each strategy owns its space and an in-test ``monkeypatch`` on
 # one does not silently bind the others.
+RANDOM_SPACE: dict[str, tuple[float, float]] = _grid_hull(GRID_SPACE)
 BAYES_SPACE: dict[str, tuple[float, float]] = _grid_hull(GRID_SPACE)
 HOLMES_SPACE: dict[str, tuple[float, float]] = _grid_hull(GRID_SPACE)

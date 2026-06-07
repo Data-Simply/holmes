@@ -6,11 +6,12 @@ from pathlib import Path
 
 import pytest
 
-from holmes.config import GRID_SPACE
+from holmes.config import GRID_SPACE, RANDOM_SPACE
 from holmes.search import holmes as holmes_module
 from holmes.search.bayes import run_bayes
 from holmes.search.grid import _grid_configs, run_grid
 from holmes.search.holmes import annotate_iteration, load_trajectory, run_iteration
+from holmes.search.random_search import run_random
 
 SEED = 0
 
@@ -50,6 +51,38 @@ class TestGrid:
         assert saved["strategy"] == "grid"
         assert saved["n_trials"] == len(_grid_configs())
         assert len(saved["trials"]) == len(_grid_configs())
+
+
+class TestRandom:
+    def test_run_random_runs_requested_trials(self, books_dataset, tmp_path):
+        out = tmp_path / "random.json"
+        n_trials = 4
+        output = run_random(books_dataset, seed=SEED, search_seed=0, n_trials=n_trials, k=10, out_path=out)
+        assert output["n_trials"] == n_trials
+        assert len(output["trials"]) == n_trials
+        saved = json.loads(out.read_text())
+        assert saved["strategy"] == "random"
+        assert len(saved["trials"]) == n_trials
+
+    def test_sampled_configs_stay_within_bounds(self, books_dataset):
+        output = run_random(books_dataset, seed=SEED, search_seed=0, n_trials=8, k=10)
+        for trial in output["trials"]:
+            for name, (low, high) in RANDOM_SPACE.items():
+                assert low <= trial["params"][name] <= high
+
+    def test_search_seed_makes_the_trajectory_reproducible(self, books_dataset):
+        first = run_random(books_dataset, seed=SEED, search_seed=7, n_trials=5, k=10)
+        second = run_random(books_dataset, seed=SEED, search_seed=7, n_trials=5, k=10)
+        assert [t["params"] for t in first["trials"]] == [t["params"] for t in second["trials"]]
+
+    def test_different_search_seeds_draw_different_configs(self, books_dataset):
+        first = run_random(books_dataset, seed=SEED, search_seed=1, n_trials=5, k=10)
+        second = run_random(books_dataset, seed=SEED, search_seed=2, n_trials=5, k=10)
+        assert [t["params"] for t in first["trials"]] != [t["params"] for t in second["trials"]]
+
+    def test_zero_trials_raises_descriptive_error(self, books_dataset):
+        with pytest.raises(ValueError, match="No trials"):
+            run_random(books_dataset, seed=SEED, search_seed=0, n_trials=0, k=10)
 
 
 class TestBayes:

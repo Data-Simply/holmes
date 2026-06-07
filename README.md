@@ -7,6 +7,7 @@ Amazon Reviews 2023 dataset — any category (Books is the default; preprocess o
 side by side) — comparing three strategies on the same fit budget:
 
 - **grid** — exhaustive grid search
+- **random** — random search (i.i.d. samples over the same space)
 - **bayes** — Bayesian optimization (Optuna TPE)
 - **holmes** — an agentic loop where an LLM reasons over a diagnostic battery, forms a
   falsifiable hypothesis each round, and proposes the next hyperparameters as a test of it
@@ -73,11 +74,15 @@ uv run holmes preprocess --all                             # every category into
 # 2a. Grid-search baseline.
 uv run holmes grid --data data/processed/Books --seed 0
 
-# 2b. Bayesian-optimization baseline (--seed is the per-fit seed; --sampler-seed is the TPE
+# 2b. Random-search baseline (--seed is the per-fit seed; --search-seed draws the configs).
+#     Like grid, it always runs the shared fit budget; only the trajectory seed is configurable.
+uv run holmes random --data data/processed/Books --seed 0 --search-seed 0
+
+# 2c. Bayesian-optimization baseline (--seed is the per-fit seed; --sampler-seed is the TPE
 #     search trajectory).
 uv run holmes bayes --data data/processed/Books --trials 30 --seed 0 --sampler-seed 0
 
-# 2c. The agentic HOLMES loop is driven by Claude Code via skill/SKILL.md. Each round runs
+# 2d. The agentic HOLMES loop is driven by Claude Code via skill/SKILL.md. Each round runs
 #     ONE iteration, appending diagnostics to an append-only trajectory log:
 uv run holmes heuristic --data data/processed/Books          # suggested starting params
 uv run holmes holmes-iter --data data/processed/Books \
@@ -119,9 +124,10 @@ holmes/
     harness.py         # fit one config (one seed), compute the diagnostic battery
     heuristics.py      # initial params from dataset characteristics
     grid.py            # grid search
+    random_search.py   # random search
     bayes.py           # Optuna Bayesian optimization
     holmes.py          # run ONE HOLMES iteration, append to trajectory
-  cli.py               # `holmes preprocess|grid|bayes|holmes-iter|heuristic|eval`
+  cli.py               # `holmes preprocess|grid|random|bayes|holmes-iter|heuristic|eval`
 skill/                 # SKILL.md, reasoning guide, trajectory schema
 tests/                 # test suite
 existing_literature/   # reference material
