@@ -26,7 +26,8 @@ TRAJECTORY   ?= $(RESULTS_DIR)/trajectory.json
 UV           ?= uv run
 
 .DEFAULT_GOAL := help
-.PHONY: help grid random bayes holmes all clean
+.NOTPARALLEL:  # baselines fit multi-GB ALS models; never run them concurrently
+.PHONY: help grid random bayes holmes baselines clean
 
 # --- Help (default) --------------------------------------------------------
 help:
@@ -37,7 +38,7 @@ help:
 	@echo "  random      Random search, per fit x search seed -> $(RESULTS_DIR)/random-seed<N>-search<M>.json"
 	@echo "  bayes       Optuna TPE,    per fit x search seed -> $(RESULTS_DIR)/bayes-seed<N>-search<M>.json"
 	@echo "  holmes      Open a Claude Code session that drives the agentic loop."
-	@echo "  all         Run grid, random, bayes (all seeds), then holmes."
+	@echo "  baselines   Run grid, random, bayes serially (all seeds)."
 	@echo "  clean       Remove $(RESULTS_DIR)/*.json."
 	@echo
 	@echo "Variables (current values):"
@@ -93,9 +94,9 @@ holmes:
 	@mkdir -p $(RESULTS_DIR)
 	claude "$$HOLMES_PROMPT"
 
-# --- Everything ------------------------------------------------------------
-# Baselines first (unattended), then the interactive HOLMES session.
-all: grid random bayes holmes
+# --- Baselines aggregate ---------------------------------------------------
+# The three unattended baselines, run serially. HOLMES is interactive, so it is its own target.
+baselines: grid random bayes
 
 # --- Clean -----------------------------------------------------------------
 clean:
