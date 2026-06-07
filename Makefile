@@ -118,7 +118,11 @@ holmes:
 	for cat in $(CATEGORIES); do for fs in $(FIT_SEEDS); do for t in $$(seq 1 $(TRIALS)); do \
 		i=$$((i+1)); \
 		traj=$(RESULTS_DIR)/$$cat/trajectory-seed$$fs-trial$$t.json; \
-		if [ -f "$$traj" ]; then n=$$($(UV) python -c "import json; print(len(json.load(open('$$traj'))))" 2>/dev/null || echo 0); else n=0; fi; \
+		n=0; \
+		if [ -f "$$traj" ]; then \
+			n=$$($(UV) python -c "import json; print(len(json.load(open('$$traj'))))" 2>/dev/null) \
+			|| { echo "[$$i/$$total] !!! holmes $$cat seed=$$fs trial=$$t  (corrupt trajectory, restarting)"; rm -f "$$traj"; n=0; }; \
+		fi; \
 		if [ "$$n" -ge "$$maxit" ]; then echo "[$$i/$$total] === holmes $$cat seed=$$fs trial=$$t  (skip: complete, $$n/$$maxit)"; continue; fi; \
 		mkdir -p $(RESULTS_DIR)/$$cat; \
 		datadir=$(PROCESSED_DIR)/$$cat; \
