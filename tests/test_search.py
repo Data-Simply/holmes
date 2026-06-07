@@ -54,54 +54,54 @@ class TestGrid:
 
 
 class TestRandom:
-    def test_run_random_runs_requested_trials(self, books_dataset, tmp_path):
+    def test_runs_the_fixed_max_iterations_budget(self, books_dataset, tmp_path, monkeypatch):
+        # The budget is the shared MAX_ITERATIONS, not a per-call arg; shrink it so the test
+        # fits a handful of models instead of the full budget.
+        monkeypatch.setattr("holmes.search.random_search.MAX_ITERATIONS", 4)
         out = tmp_path / "random.json"
-        n_trials = 4
-        output = run_random(books_dataset, seed=SEED, search_seed=0, n_trials=n_trials, k=10, out_path=out)
-        assert output["n_trials"] == n_trials
-        assert len(output["trials"]) == n_trials
+        output = run_random(books_dataset, seed=SEED, search_seed=0, k=10, out_path=out)
+        assert output["n_trials"] == 4
+        assert len(output["trials"]) == 4
         saved = json.loads(out.read_text())
         assert saved["strategy"] == "random"
-        assert len(saved["trials"]) == n_trials
+        assert len(saved["trials"]) == 4
 
-    def test_sampled_configs_stay_within_bounds(self, books_dataset):
-        output = run_random(books_dataset, seed=SEED, search_seed=0, n_trials=8, k=10)
+    def test_sampled_configs_stay_within_bounds(self, books_dataset, monkeypatch):
+        monkeypatch.setattr("holmes.search.random_search.MAX_ITERATIONS", 8)
+        output = run_random(books_dataset, seed=SEED, search_seed=0, k=10)
         for trial in output["trials"]:
             for name, (low, high) in RANDOM_SPACE.items():
                 assert low <= trial["params"][name] <= high
 
-    def test_search_seed_makes_the_trajectory_reproducible(self, books_dataset):
-        first = run_random(books_dataset, seed=SEED, search_seed=7, n_trials=5, k=10)
-        second = run_random(books_dataset, seed=SEED, search_seed=7, n_trials=5, k=10)
+    def test_search_seed_makes_the_trajectory_reproducible(self, books_dataset, monkeypatch):
+        monkeypatch.setattr("holmes.search.random_search.MAX_ITERATIONS", 5)
+        first = run_random(books_dataset, seed=SEED, search_seed=7, k=10)
+        second = run_random(books_dataset, seed=SEED, search_seed=7, k=10)
         assert [t["params"] for t in first["trials"]] == [t["params"] for t in second["trials"]]
 
-    def test_different_search_seeds_draw_different_configs(self, books_dataset):
-        first = run_random(books_dataset, seed=SEED, search_seed=1, n_trials=5, k=10)
-        second = run_random(books_dataset, seed=SEED, search_seed=2, n_trials=5, k=10)
+    def test_different_search_seeds_draw_different_configs(self, books_dataset, monkeypatch):
+        monkeypatch.setattr("holmes.search.random_search.MAX_ITERATIONS", 5)
+        first = run_random(books_dataset, seed=SEED, search_seed=1, k=10)
+        second = run_random(books_dataset, seed=SEED, search_seed=2, k=10)
         assert [t["params"] for t in first["trials"]] != [t["params"] for t in second["trials"]]
 
-    def test_zero_trials_raises_descriptive_error(self, books_dataset):
+    def test_zero_budget_raises_descriptive_error(self, books_dataset, monkeypatch):
+        monkeypatch.setattr("holmes.search.random_search.MAX_ITERATIONS", 0)
         with pytest.raises(ValueError, match="No trials"):
-            run_random(books_dataset, seed=SEED, search_seed=0, n_trials=0, k=10)
+            run_random(books_dataset, seed=SEED, search_seed=0, k=10)
 
 
 class TestBayes:
-    def test_run_bayes_runs_requested_trials(self, books_dataset, tmp_path):
-        n_trials = 4
-        output = run_bayes(
-            books_dataset,
-            seed=SEED,
-            n_trials=n_trials,
-            k=10,
-            sampler_seed=0,
-            out_path=tmp_path / "bayes.json",
-        )
-        assert output["n_trials"] == n_trials
-        assert len(output["trials"]) == n_trials
+    def test_runs_the_fixed_max_iterations_budget(self, books_dataset, tmp_path, monkeypatch):
+        monkeypatch.setattr("holmes.search.bayes.MAX_ITERATIONS", 4)
+        output = run_bayes(books_dataset, seed=SEED, k=10, sampler_seed=0, out_path=tmp_path / "bayes.json")
+        assert output["n_trials"] == 4
+        assert len(output["trials"]) == 4
 
-    def test_zero_trials_raises_descriptive_error(self, books_dataset):
+    def test_zero_budget_raises_descriptive_error(self, books_dataset, monkeypatch):
+        monkeypatch.setattr("holmes.search.bayes.MAX_ITERATIONS", 0)
         with pytest.raises(ValueError, match="No trials"):
-            run_bayes(books_dataset, seed=SEED, n_trials=0, k=10, sampler_seed=0)
+            run_bayes(books_dataset, seed=SEED, k=10, sampler_seed=0)
 
 
 class TestHolmesIteration:

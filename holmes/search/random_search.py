@@ -46,18 +46,19 @@ def run_random(
     *,
     seed: int = DEFAULT_SEED,
     search_seed: int = 0,
-    n_trials: int = MAX_ITERATIONS,
     k: int = TOP_K,
     out_path: Path | None = None,
 ) -> SearchOutput:
-    """Evaluate ``n_trials`` random configurations and return the trial log and best result.
+    """Evaluate :data:`holmes.config.MAX_ITERATIONS` random configs and return the trial log and best.
+
+    The trial count is the shared fixed budget (like grid is exhaustive), not a per-call knob, so
+    the three-way comparison is always at the same budget.
 
     Args:
         dataset: Preprocessed interaction matrix.
         seed: Random seed fit per configuration.
         search_seed: Seed for the sampler drawing the configurations, controlling the search
             trajectory (distinct from the per-fit ``seed``).
-        n_trials: Number of random configurations to draw.
         k: Ranking cut-off.
         out_path: Optional path to write the full results JSON.
 
@@ -66,13 +67,13 @@ def run_random(
     """
     rng = np.random.default_rng(search_seed)
     trials: list[EvalResult] = []
-    for i in range(1, n_trials + 1):
+    for i in range(1, MAX_ITERATIONS + 1):
         params = _sample_params(rng)
         result = evaluate_config(params, dataset, seed=seed, k=k, split="val")
         trials.append(result)
         metrics = result["metrics"]
         timing = f"fit={metrics['fit_time_seconds']:.2f}s eval={metrics['eval_time_seconds']:.2f}s"
-        print(f"[random {i}/{n_trials}] {params.to_dict()} -> val ndcg={result['score']:.4f}  {timing}")
+        print(f"[random {i}/{MAX_ITERATIONS}] {params.to_dict()} -> val ndcg={result['score']:.4f}  {timing}")
 
     best = select_best(trials)
     output: SearchOutput = {"strategy": "random", "n_trials": len(trials), "best": best, "trials": trials}
