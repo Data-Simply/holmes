@@ -6,7 +6,14 @@ from pathlib import Path
 
 import pytest
 
-from holmes.config import GRID_SPACE, RANDOM_SPACE
+from holmes.config import (
+    BAYES_SPACE,
+    GRID_SPACE,
+    HOLMES_SPACE,
+    MAX_ITERATIONS,
+    RANDOM_SPACE,
+    _grid_hull,
+)
 from holmes.search import holmes as holmes_module
 from holmes.search.bayes import run_bayes
 from holmes.search.grid import _grid_configs, run_grid
@@ -14,6 +21,30 @@ from holmes.search.holmes import annotate_iteration, load_trajectory, run_iterat
 from holmes.search.random_search import run_random
 
 SEED = 0
+
+_ALS_HYPERPARAMETERS = {"factors", "regularization", "iterations", "alpha"}
+
+
+class TestComparabilityInvariants:
+    """Lock the by-construction guarantees that make grid/random/bayes/HOLMES a fair comparison —
+    same region, same budget, same hyperparameters. A future edit that breaks one fails here rather
+    than silently skewing the benchmark."""
+
+    def test_all_continuous_spaces_equal_the_grid_hull(self):
+        # grid is discrete; random/bayes/HOLMES optimize its continuous hull. The three hulls are
+        # deliberately distinct objects (so monkeypatching one doesn't bind the others) but MUST
+        # stay equal by value, or the comparison measures search-space coverage, not optimizer skill.
+        expected = _grid_hull(GRID_SPACE)
+        assert RANDOM_SPACE == BAYES_SPACE == HOLMES_SPACE == expected
+
+    def test_every_space_covers_exactly_the_als_hyperparameters(self):
+        for space in (GRID_SPACE, RANDOM_SPACE, BAYES_SPACE, HOLMES_SPACE):
+            assert set(space.keys()) == _ALS_HYPERPARAMETERS
+
+    def test_grid_enumerates_exactly_the_shared_budget(self):
+        # random/bayes read MAX_ITERATIONS directly and HOLMES caps at it; grid must enumerate the
+        # same count or the fixed-budget comparison is off by construction.
+        assert len(_grid_configs()) == MAX_ITERATIONS
 
 
 @pytest.fixture
