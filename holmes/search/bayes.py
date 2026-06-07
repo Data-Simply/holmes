@@ -77,8 +77,7 @@ def run_bayes(
 ) -> SearchOutput:
     """Run an Optuna study maximizing held-out NDCG@K and return the trial log.
 
-    The trial count is the shared fixed budget :data:`holmes.config.MAX_ITERATIONS` (like grid is
-    exhaustive), not a per-call knob, so the three-way comparison is always at the same budget.
+    The count is the shared fixed budget :data:`holmes.config.MAX_ITERATIONS`.
 
     Args:
         dataset: Preprocessed interaction matrix.

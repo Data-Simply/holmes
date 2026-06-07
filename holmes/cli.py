@@ -269,8 +269,6 @@ def _cmd_grid(args: argparse.Namespace) -> None:
 
 
 def _cmd_random(args: argparse.Namespace) -> None:
-    # Like grid is always exhaustive, random always draws the shared MAX_ITERATIONS budget
-    # (run_random's default) so the three-way comparison is at a fixed fit budget.
     run_random(
         Dataset.load(args.data),
         seed=args.seed,
@@ -281,8 +279,6 @@ def _cmd_random(args: argparse.Namespace) -> None:
 
 
 def _cmd_bayes(args: argparse.Namespace) -> None:
-    # Like grid and random, bayes always runs the shared MAX_ITERATIONS budget (run_bayes's
-    # default) so the three-way comparison is at a fixed fit budget.
     run_bayes(
         Dataset.load(args.data),
         seed=args.seed,

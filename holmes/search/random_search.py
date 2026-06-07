@@ -51,8 +51,7 @@ def run_random(
 ) -> SearchOutput:
     """Evaluate :data:`holmes.config.MAX_ITERATIONS` random configs and return the trial log and best.
 
-    The trial count is the shared fixed budget (like grid is exhaustive), not a per-call knob, so
-    the three-way comparison is always at the same budget.
+    The count is the shared fixed budget.
 
     Args:
         dataset: Preprocessed interaction matrix.
