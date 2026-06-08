@@ -145,6 +145,7 @@ holmes:
 		echo "[$$i/$$total] >>> holmes $$tag  ($$n/$$maxit done) -> $$traj"; \
 		mkdir -p "$(ABS_RESULTS)/$$cat"; \
 		sb=$$(mktemp -d); mkdir -p "$$sb/.claude/skills" "$$sb/data/processed"; \
+		: 'isolation: symlink in ONLY the skill, one dataset, and the trajectory -- the sandbox is the agent cwd, so it sees nothing else of the repo'; \
 		ln -s "$(ABS_SKILL)" "$$sb/.claude/skills/holmes-hpo"; \
 		ln -s "$(ABS_PROC)/$$cat" "$$sb/data/processed/$$cat"; \
 		ln -s "$$traj" "$$sb/trajectory.json"; \
