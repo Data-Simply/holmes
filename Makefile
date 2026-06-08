@@ -22,6 +22,10 @@
 # TRIALS        HOLMES runs per fit seed. The LLM search has no integer seed, so
 #               repeated trials are how its search variance is characterized (the
 #               HOLMES analog of SEARCH_SEEDS).
+# EFFORT_LEVELS Claude reasoning-effort levels to sweep, HOLMES only (claude --effort:
+#               low medium high xhigh max). Defaults to a single level; expand to sweep.
+# MODELS        Claude model aliases to sweep, HOLMES only (claude --model, e.g. opus sonnet).
+#               Defaults to a single model; expand to sweep.
 # RESULTS_DIR   where result JSON is written (namespaced per category)
 # UV            runner; ensures the project env is used
 PROCESSED_DIR ?= data/processed
@@ -29,6 +33,8 @@ CATEGORIES    ?= $(notdir $(patsubst %/,%,$(wildcard $(PROCESSED_DIR)/*/)))
 FIT_SEEDS     ?= 0 1 2
 SEARCH_SEEDS  ?= 0
 TRIALS        ?= 3
+EFFORT_LEVELS ?= high
+MODELS        ?= opus
 RESULTS_DIR   ?= results
 UV            ?= uv run
 
@@ -52,7 +58,8 @@ help:
 	@echo "  grid        Grid search,   per fit seed         -> $(RESULTS_DIR)/<cat>/grid-seed<N>.json"
 	@echo "  random      Random search, per fit x search seed -> $(RESULTS_DIR)/<cat>/random-seed<N>-search<M>.json"
 	@echo "  bayes       Optuna TPE,    per fit x search seed -> $(RESULTS_DIR)/<cat>/bayes-seed<N>-search<M>.json"
-	@echo "  holmes      Interactive session per fit x trial -> $(RESULTS_DIR)/<cat>/trajectory-seed<N>-trial<T>.json"
+	@echo "  holmes      Sandboxed session per fit x trial x model x effort"
+	@echo "              -> $(RESULTS_DIR)/<cat>/trajectory-seed<N>-trial<T>-<model>-<effort>.json"
 	@echo "  baselines   Run grid, random, bayes serially (all categories/seeds)."
 	@echo
 	@echo "Variables (current values):"
@@ -61,6 +68,8 @@ help:
 	@echo "  FIT_SEEDS     = $(FIT_SEEDS)   (ALS --seed; all strategies)"
 	@echo "  SEARCH_SEEDS  = $(SEARCH_SEEDS)   (random/bayes search trajectory; grid ignores it)"
 	@echo "  TRIALS        = $(TRIALS)   (HOLMES runs per fit seed)"
+	@echo "  EFFORT_LEVELS = $(EFFORT_LEVELS)   (HOLMES claude --effort sweep)"
+	@echo "  MODELS        = $(MODELS)   (HOLMES claude --model sweep)"
 	@echo
 	@echo "Note: each fit is a full ALS model (multi-GB at real scale); the baseline"
 	@echo "targets fit once per seed, so they are long-running and block until done."
@@ -113,32 +122,35 @@ bayes:
 # that one category's dataset, and a symlink to its own trajectory log (which lives under
 # $(RESULTS_DIR) so it persists and resumes across runs). The `holmes` CLI is installed once as a
 # uv tool so the skill can call it bare; isolation is only as strong as the sandbox (the symlinks
-# still point back into the repo). Completion is "trajectory length == MAX_ITERATIONS", not mere
-# existence: complete trajectories are skipped, incomplete ones resume, corrupt ones restart.
+# still point back into the repo). The sweep also spans MODELS x EFFORT_LEVELS (the claude --model
+# / --effort flags, set on the session, not seen by the agent). Completion is "trajectory length ==
+# MAX_ITERATIONS", not mere existence: complete trajectories are skipped, incomplete ones resume,
+# corrupt ones restart.
 holmes:
 	@$(NEED_CATS)
 	@command -v holmes >/dev/null 2>&1 || { echo "Installing holmes as a uv tool (editable)..."; uv tool install --editable "$(CURDIR)"; }
 	@command -v holmes >/dev/null 2>&1 || { echo "holmes still not on PATH after install; run 'uv tool update-shell' (or add the uv tool bin to PATH) and retry."; exit 1; }
 	@maxit=$$($(UV) python -c "from holmes.config import MAX_ITERATIONS; print(MAX_ITERATIONS)"); \
-	total=$$(( $(words $(CATEGORIES)) * $(words $(FIT_SEEDS)) * $(TRIALS) )); i=0; \
-	for cat in $(CATEGORIES); do for fs in $(FIT_SEEDS); do for t in $$(seq 1 $(TRIALS)); do \
+	total=$$(( $(words $(CATEGORIES)) * $(words $(FIT_SEEDS)) * $(words $(MODELS)) * $(words $(EFFORT_LEVELS)) * $(TRIALS) )); i=0; \
+	for cat in $(CATEGORIES); do for fs in $(FIT_SEEDS); do for m in $(MODELS); do for e in $(EFFORT_LEVELS); do for t in $$(seq 1 $(TRIALS)); do \
 		i=$$((i+1)); \
-		traj=$(ABS_RESULTS)/$$cat/trajectory-seed$$fs-trial$$t.json; \
+		traj=$(ABS_RESULTS)/$$cat/trajectory-seed$$fs-trial$$t-$$m-$$e.json; \
+		tag="$$cat seed=$$fs trial=$$t model=$$m effort=$$e"; \
 		n=0; \
 		if [ -f "$$traj" ]; then \
 			n=$$($(UV) python -c "import json; print(len(json.load(open('$$traj'))))" 2>/dev/null) \
-			|| { echo "[$$i/$$total] !!! holmes $$cat seed=$$fs trial=$$t  (corrupt trajectory, restarting)"; rm -f "$$traj"; n=0; }; \
+			|| { echo "[$$i/$$total] !!! holmes $$tag  (corrupt trajectory, restarting)"; rm -f "$$traj"; n=0; }; \
 		fi; \
-		if [ "$$n" -ge "$$maxit" ]; then echo "[$$i/$$total] === holmes $$cat seed=$$fs trial=$$t  (skip: complete, $$n/$$maxit)"; continue; fi; \
-		echo "[$$i/$$total] >>> holmes $$cat fit-seed=$$fs trial=$$t  ($$n/$$maxit done) -> $$traj"; \
+		if [ "$$n" -ge "$$maxit" ]; then echo "[$$i/$$total] === holmes $$tag  (skip: complete, $$n/$$maxit)"; continue; fi; \
+		echo "[$$i/$$total] >>> holmes $$tag  ($$n/$$maxit done) -> $$traj"; \
 		mkdir -p "$(ABS_RESULTS)/$$cat"; \
 		sb=$$(mktemp -d); mkdir -p "$$sb/.claude/skills" "$$sb/data/processed"; \
 		ln -s "$(ABS_SKILL)" "$$sb/.claude/skills/holmes-hpo"; \
 		ln -s "$(ABS_PROC)/$$cat" "$$sb/data/processed/$$cat"; \
 		ln -s "$$traj" "$$sb/trajectory.json"; \
-		( cd "$$sb" && claude "Use the holmes-hpo skill to run the agentic tuning loop on --data data/processed/$$cat, logging to --trajectory trajectory.json with --seed $$fs. If the trajectory already has entries, continue from there rather than re-seeding the heuristic." ); \
+		( cd "$$sb" && claude --model "$$m" --effort "$$e" "Use the holmes-hpo skill to run the agentic tuning loop on --data data/processed/$$cat, logging to --trajectory trajectory.json with --seed $$fs. If the trajectory already has entries, continue from there rather than re-seeding the heuristic." ); \
 		rc=$$?; rm -rf "$$sb"; [ "$$rc" = 0 ] || exit "$$rc"; \
-	done; done; done
+	done; done; done; done; done
 
 # --- Baselines aggregate ---------------------------------------------------
 # The three unattended baselines, run serially. HOLMES is interactive, so it is its own target.
