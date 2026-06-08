@@ -14,16 +14,19 @@ battery, not by blindly optimizing a single score. Each iteration you write a *f
 hypothesis*, run one fit, and decide whether the hypothesis was validated. The trajectory of
 (hypothesis → params → metrics → interpretation) is the deliverable.
 
-Every step is a `holmes` CLI call. Do not edit `results/trajectory.json` by hand — the CLI
-owns that file and edits-via-flag are deterministic where free-form edits are not. The only
-files the workflow touches are a preprocessed dataset directory `data/processed/<category>/`
-(input, e.g. `data/processed/Books`) and `results/trajectory.json` (output).
+Every step is a `holmes` CLI call. The tool is installed on your PATH, so invoke it bare
+(`holmes ranges`, `holmes heuristic …`) — do not prefix it with `uv run` or anything else.
+
+You are given two paths: the input dataset (the `--data` directory) and the trajectory log (the
+`--trajectory` file). Pass *exactly those* to every command — do not hardcode or invent paths. The
+literal paths in the examples below (`data/processed/Books`, `trajectory.json`) are placeholders for
+the ones you were given. Do not edit the trajectory file by hand — the CLI owns it, and
+edits-via-flag are deterministic where free-form edits are not.
 
 ## When to use this
 
-- A preprocessed dataset exists at `data/processed/<category>` (or run `holmes preprocess
-  --category <category>` first; it defaults to `Books`). Every command below requires `--data`
-  pointing at that directory — there is no default, so the examples use `data/processed/Books`.
+- A preprocessed dataset exists at the `--data` directory you were given. Every command requires
+  `--data` pointing at it — there is no default.
 - A shared fit budget caps the loop — a hard cap shared with the grid and Bayes baselines so
   the three strategies are compared at the same number of ALS fits. Call `holmes ranges` at the
   start of the loop to read both the HP bounds and the `max_iterations` budget; the CLI
@@ -49,7 +52,7 @@ auto-backgrounded or killed, and the process-control commands trigger permission
 don't need. The completion notification is the signal; check the trajectory afterwards.
 
 Run **one fit at a time**. `holmes-iter` and `heuristic --trajectory ...` both
-read-modify-append `results/trajectory.json`, so two concurrent fits race on it and one
+read-modify-append the trajectory file, so two concurrent fits race on it and one
 iteration's entry will be lost.
 
 If a run looks suspiciously long and you want a liveness signal, pass `--progress` to
@@ -82,7 +85,7 @@ rationales (e.g. "factors=128 because the dataset is large; falsifier: high
 entry to the trajectory:
 
 ```bash
-holmes heuristic --data data/processed/Books --trajectory results/trajectory.json --seed 0
+holmes heuristic --data <data> --trajectory <trajectory> --seed 0
 ```
 
 The diagnostic battery is computed on the **validation** split. The entry is recorded with
@@ -94,7 +97,7 @@ For every subsequent iteration, read the latest trajectory entry, decide the nex
 hypothesis, and submit the iteration as a single Bash command:
 
 ```bash
-holmes holmes-iter --data data/processed/Books --trajectory results/trajectory.json --seed 0 \
+holmes holmes-iter --data <data> --trajectory <trajectory> --seed 0 \
   --factors 128 --regularization 0.1 --iterations 20 --alpha 40.0 \
   --mechanism "Raising regularization 10x cuts mean_factor_norm by ~half and closes \
     train_test_ndcg_gap from ~0.4 to <0.2." \
@@ -143,7 +146,7 @@ observed metric moves to your mechanism and outcome predictions. Classify the re
 exactly one of four states, then record both via:
 
 ```bash
-holmes annotate --trajectory results/trajectory.json --iteration N \
+holmes annotate --trajectory <trajectory> --iteration N \
   --status validated \
   --interpretation "Gap fell 0.41 -> 0.17 as predicted and ndcg rose 14% -> validated. \
     The lever is regularization; next, probe whether factors can now go higher without \
@@ -202,7 +205,7 @@ When the budget is spent, ndcg has plateaued, or you have exhausted plausible hy
 the winner on the held-out **test** split once for an unbiased number:
 
 ```bash
-holmes eval --data data/processed/Books --params '{"factors": 96, "regularization": 0.1, "iterations": 20, "alpha": 40.0}' --split test
+holmes eval --data <data> --params '{"factors": 96, "regularization": 0.1, "iterations": 20, "alpha": 40.0}' --split test
 ```
 
 Then write a short summary: best config, the ndcg it reached, the trajectory of hypotheses
