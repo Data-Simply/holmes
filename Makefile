@@ -127,7 +127,7 @@ holmes:
 		mkdir -p $(RESULTS_DIR)/$$cat; \
 		datadir=$(PROCESSED_DIR)/$$cat; \
 		echo "[$$i/$$total] >>> holmes $$cat fit-seed=$$fs trial=$$t  ($$n/$$maxit done) -> $$traj"; \
-		claude "Run the HOLMES agentic hyperparameter-tuning loop using the holmes-hpo skill (skill/SKILL.md). Dataset --data is $$datadir; the trajectory log is $$traj, which currently holds $$n of $$maxit iterations. Use --seed $$fs for every fit, and prefix every holmes command with '$(UV)'. First run $(UV) holmes ranges to read the bounds and the max_iterations budget. If the trajectory is empty, seed iteration 1 by running $(UV) holmes heuristic --data $$datadir --trajectory $$traj --seed $$fs; otherwise do NOT re-run heuristic -- read the existing trajectory and continue from where it left off, with $(UV) holmes holmes-iter --trajectory $$traj --seed $$fs. Run the loop autonomously per SKILL.md until the trajectory reaches max_iterations, and finish with a held-out test eval and a short summary." || exit $$?; \
+		claude "Use the holmes-hpo skill (skill/SKILL.md) to run the agentic tuning loop on --data $$datadir, logging to --trajectory $$traj with --seed $$fs. If $$traj already has entries, continue from there rather than re-seeding the heuristic." || exit $$?; \
 	done; done; done
 
 # --- Baselines aggregate ---------------------------------------------------
