@@ -1,10 +1,10 @@
 # HOLMES experiment runner.
 #
 # Wraps the `holmes` CLI so the four strategies can be launched with one command each.
-# grid / random / bayes run unattended; holmes runs an interactive Claude session per
-# fit-seed x trial. Every target loops over CATEGORIES and skips any run whose result file
-# already exists, so an interrupted run resumes without redoing completed trials. Pure
-# orchestration -- no changes to holmes/ code.
+# grid / random / bayes run unattended; holmes runs each category x fit-seed x trial as an
+# interactive Claude session in an isolated sandbox. Every target loops over CATEGORIES and skips
+# runs whose result already exists, so an interrupted sweep resumes without redoing completed work.
+# Pure orchestration -- no changes to holmes/ code.
 #
 # Override any variable on the command line, e.g.:
 #   make grid CATEGORIES=Books FIT_SEEDS="0 1 2 3 4"
@@ -31,6 +31,11 @@ SEARCH_SEEDS  ?= 0
 TRIALS        ?= 3
 RESULTS_DIR   ?= results
 UV            ?= uv run
+
+# Absolute paths for the HOLMES sandbox symlinks (Claude runs with cwd = the sandbox dir).
+ABS_SKILL   := $(abspath skill)
+ABS_PROC    := $(abspath $(PROCESSED_DIR))
+ABS_RESULTS := $(abspath $(RESULTS_DIR))
 
 # Error guard for the empty-CATEGORIES case (nothing preprocessed yet).
 NEED_CATS = test -n "$(CATEGORIES)" || { echo "No preprocessed categories under $(PROCESSED_DIR). Run 'uv run holmes preprocess' first."; exit 1; }
@@ -102,32 +107,37 @@ bayes:
 	done; done; done
 
 # --- HOLMES agentic loop ---------------------------------------------------
-# The loop needs an LLM between rounds, so each run is an interactive Claude session with a
-# pre-filled prompt; Claude drives the loop autonomously per skill/SKILL.md, then returns to the
-# REPL (Ctrl-D out to launch the next run). For a fair comparison with the baselines, sweep one
-# run per category x fit seed with TRIALS repeats each -- the repeats stand in for the search seed
-# the LLM does not have. Runs are sequential. Unlike the baselines (one out file written only at
-# completion), the trajectory grows from iteration 1, so completion is "trajectory length ==
-# MAX_ITERATIONS", not mere existence: complete trajectories are skipped while incomplete ones
-# resume from where they left off. The prompt avoids backticks/quotes so the shell does not
-# interpret it; $(PROCESSED_DIR)/$(UV) are make-expanded while the $$-names interpolate in the shell.
+# HOLMES is the one strategy driven by an LLM, and the comparison only holds if that agent sees
+# ONLY its skill and its own dataset -- never the other optimizers' code or results. So each trial
+# runs in a throwaway sandbox dir (the agent's cwd) holding just: the holmes-hpo skill, a symlink to
+# that one category's dataset, and a symlink to its own trajectory log (which lives under
+# $(RESULTS_DIR) so it persists and resumes across runs). The `holmes` CLI is installed once as a
+# uv tool so the skill can call it bare; isolation is only as strong as the sandbox (the symlinks
+# still point back into the repo). Completion is "trajectory length == MAX_ITERATIONS", not mere
+# existence: complete trajectories are skipped, incomplete ones resume, corrupt ones restart.
 holmes:
 	@$(NEED_CATS)
+	@command -v holmes >/dev/null 2>&1 || { echo "Installing holmes as a uv tool (editable)..."; uv tool install --editable "$(CURDIR)"; }
+	@command -v holmes >/dev/null 2>&1 || { echo "holmes still not on PATH after install; run 'uv tool update-shell' (or add the uv tool bin to PATH) and retry."; exit 1; }
 	@maxit=$$($(UV) python -c "from holmes.config import MAX_ITERATIONS; print(MAX_ITERATIONS)"); \
 	total=$$(( $(words $(CATEGORIES)) * $(words $(FIT_SEEDS)) * $(TRIALS) )); i=0; \
 	for cat in $(CATEGORIES); do for fs in $(FIT_SEEDS); do for t in $$(seq 1 $(TRIALS)); do \
 		i=$$((i+1)); \
-		traj=$(RESULTS_DIR)/$$cat/trajectory-seed$$fs-trial$$t.json; \
+		traj=$(ABS_RESULTS)/$$cat/trajectory-seed$$fs-trial$$t.json; \
 		n=0; \
 		if [ -f "$$traj" ]; then \
 			n=$$($(UV) python -c "import json; print(len(json.load(open('$$traj'))))" 2>/dev/null) \
 			|| { echo "[$$i/$$total] !!! holmes $$cat seed=$$fs trial=$$t  (corrupt trajectory, restarting)"; rm -f "$$traj"; n=0; }; \
 		fi; \
 		if [ "$$n" -ge "$$maxit" ]; then echo "[$$i/$$total] === holmes $$cat seed=$$fs trial=$$t  (skip: complete, $$n/$$maxit)"; continue; fi; \
-		mkdir -p $(RESULTS_DIR)/$$cat; \
-		datadir=$(PROCESSED_DIR)/$$cat; \
 		echo "[$$i/$$total] >>> holmes $$cat fit-seed=$$fs trial=$$t  ($$n/$$maxit done) -> $$traj"; \
-		claude "Use the holmes-hpo skill (skill/SKILL.md) to run the agentic tuning loop on --data $$datadir, logging to --trajectory $$traj with --seed $$fs. If $$traj already has entries, continue from there rather than re-seeding the heuristic." || exit $$?; \
+		mkdir -p "$(ABS_RESULTS)/$$cat"; \
+		sb=$$(mktemp -d); mkdir -p "$$sb/.claude/skills" "$$sb/data/processed"; \
+		ln -s "$(ABS_SKILL)" "$$sb/.claude/skills/holmes-hpo"; \
+		ln -s "$(ABS_PROC)/$$cat" "$$sb/data/processed/$$cat"; \
+		ln -s "$$traj" "$$sb/trajectory.json"; \
+		( cd "$$sb" && claude "Use the holmes-hpo skill to run the agentic tuning loop on --data data/processed/$$cat, logging to --trajectory trajectory.json with --seed $$fs. If the trajectory already has entries, continue from there rather than re-seeding the heuristic." ); \
+		rc=$$?; rm -rf "$$sb"; [ "$$rc" = 0 ] || exit "$$rc"; \
 	done; done; done
 
 # --- Baselines aggregate ---------------------------------------------------

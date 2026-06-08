@@ -14,9 +14,9 @@ battery, not by blindly optimizing a single score. Each iteration you write a *f
 hypothesis*, run one fit, and decide whether the hypothesis was validated. The trajectory of
 (hypothesis → params → metrics → interpretation) is the deliverable.
 
-Every step is a `holmes` CLI call, always invoked through `uv run` (e.g. `uv run holmes ranges`)
-so the project environment and dependencies are used — never call `holmes` bare. Do not edit
-`results/trajectory.json` by hand — the CLI owns that file and edits-via-flag are deterministic
+Every step is a `holmes` CLI call. The tool is installed on your PATH, so invoke it bare
+(`holmes ranges`, `holmes heuristic …`) — do not prefix it with `uv run` or anything else. Do not
+edit `results/trajectory.json` by hand — the CLI owns that file and edits-via-flag are deterministic
 where free-form edits are not. The only
 files the workflow touches are a preprocessed dataset directory `data/processed/<category>/`
 (input, e.g. `data/processed/Books`) and `results/trajectory.json` (output).
@@ -84,7 +84,7 @@ rationales (e.g. "factors=128 because the dataset is large; falsifier: high
 entry to the trajectory:
 
 ```bash
-uv run holmes heuristic --data data/processed/Books --trajectory results/trajectory.json --seed 0
+holmes heuristic --data data/processed/Books --trajectory results/trajectory.json --seed 0
 ```
 
 The diagnostic battery is computed on the **validation** split. The entry is recorded with
@@ -96,7 +96,7 @@ For every subsequent iteration, read the latest trajectory entry, decide the nex
 hypothesis, and submit the iteration as a single Bash command:
 
 ```bash
-uv run holmes holmes-iter --data data/processed/Books --trajectory results/trajectory.json --seed 0 \
+holmes holmes-iter --data data/processed/Books --trajectory results/trajectory.json --seed 0 \
   --factors 128 --regularization 0.1 --iterations 20 --alpha 40.0 \
   --mechanism "Raising regularization 10x cuts mean_factor_norm by ~half and closes \
     train_test_ndcg_gap from ~0.4 to <0.2." \
@@ -145,7 +145,7 @@ observed metric moves to your mechanism and outcome predictions. Classify the re
 exactly one of four states, then record both via:
 
 ```bash
-uv run holmes annotate --trajectory results/trajectory.json --iteration N \
+holmes annotate --trajectory results/trajectory.json --iteration N \
   --status validated \
   --interpretation "Gap fell 0.41 -> 0.17 as predicted and ndcg rose 14% -> validated. \
     The lever is regularization; next, probe whether factors can now go higher without \
@@ -204,7 +204,7 @@ When the budget is spent, ndcg has plateaued, or you have exhausted plausible hy
 the winner on the held-out **test** split once for an unbiased number:
 
 ```bash
-uv run holmes eval --data data/processed/Books --params '{"factors": 96, "regularization": 0.1, "iterations": 20, "alpha": 40.0}' --split test
+holmes eval --data data/processed/Books --params '{"factors": 96, "regularization": 0.1, "iterations": 20, "alpha": 40.0}' --split test
 ```
 
 Then write a short summary: best config, the ndcg it reached, the trajectory of hypotheses
