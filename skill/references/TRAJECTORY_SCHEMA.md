@@ -2,8 +2,9 @@
 
 The trajectory is an append-only JSON **array**, one object per iteration, written to
 `results/trajectory.json` by `holmes holmes-iter`. The mechanical fields (`params`, `seed`,
-`metrics`, `score`) are filled by the CLI. The reasoning fields (`hypothesis` before the run;
-`validation_status` and `interpretation` after) are written by the LLM driving the loop.
+`k`, `split`, `metrics`, `score`) are filled by the CLI. The reasoning fields (`hypothesis`
+before the run; `validation_status` and `interpretation` after) are written by the LLM driving
+the loop.
 
 Each iteration fits **one seed**. To judge whether a result is stable across initializations, run
 the same `params` again with a different `--seed` and compare — the spread across those runs is the
@@ -15,6 +16,8 @@ stability signal (it is not a field on a single entry).
 {
   "iteration": 3,                       // 1-based, assigned by the CLI
   "seed": 0,                            // the seed fit this iteration
+  "k": 10,                              // ranking cut-off scored (recorded so a drift is visible)
+  "split": "val",                       // held-out split scored
   "params": {                           // the config that was fit
     "factors": 128,
     "regularization": 0.1,
@@ -22,7 +25,7 @@ stability signal (it is not a field on a single entry).
     "alpha": 10.0
   },
   "hypothesis": {                       // WRITTEN BEFORE THE RUN
-    "mechanism": "Raising regularization 10x (0.01->0.1) shrinks mean_item_factor_norm by ~half and cuts train_test_ndcg_gap from ~0.4 to <0.2.",
+    "mechanism": "Raising regularization 10x (0.01->0.1) shrinks mean_factor_norm by ~half and cuts train_test_ndcg_gap from ~0.4 to <0.2.",
     "outcome": "Validation ndcg rises ~15% because less memorization means better generalization.",
     "falsifiers": "If the gap does not narrow, the gap wasn't driven by under-regularization. If the gap narrows but ndcg falls, regularization is now too strong (pattern 5)."
   },
