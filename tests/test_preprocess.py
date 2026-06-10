@@ -23,6 +23,31 @@ def _reviews(rows: list[dict]) -> pl.LazyFrame:
     ).lazy()
 
 
+def _tied_timestamp_frame(tied_order: list[str]) -> pl.DataFrame:
+    """Four cust_a interactions whose two latest timestamps tie; ``tied_order`` sets row order."""
+    return pl.DataFrame(
+        {
+            "user_id": ["cust_a"] * 4,
+            "parent_asin": ["B10", "B11", *tied_order],
+            "timestamp": [1, 2, 3, 3],  # the last two interactions tie at the latest timestamp
+            "rating": [5.0, 5.0, 5.0, 5.0],
+        },
+    )
+
+
+def _split_maps(dataset):
+    """The (test, val) splits as user->item dicts, for order-independence comparisons."""
+    test = dict(zip(dataset.test_users.tolist(), dataset.test_items.tolist(), strict=True))
+    val = dict(zip(dataset.val_users.tolist(), dataset.val_items.tolist(), strict=True))
+    return test, val
+
+
+def _fail_if_called(*args, **kwargs):
+    """Stand-in for a function the test asserts is never invoked."""
+    msg = "build_dataset rebuilt the cache despite a present one"
+    raise AssertionError(msg)
+
+
 class TestDeduplicateInteractions:
     def test_collapses_repeats_keeping_latest_timestamp(self):
         reviews = _reviews(
@@ -182,25 +207,9 @@ class TestAssignIndicesAndSplit:
         order. Here the two interactions tied at the latest timestamp are presented in OPPOSITE
         orders; the split must be identical either way.
         """
-
-        def frame(tied_order: list[str]) -> pl.DataFrame:
-            return pl.DataFrame(
-                {
-                    "user_id": ["cust_a", "cust_a", *(["cust_a"] * 2)],
-                    "parent_asin": ["B10", "B11", *tied_order],
-                    "timestamp": [1, 2, 3, 3],  # B12 and B13 tie at the latest timestamp
-                    "rating": [5.0, 5.0, 5.0, 5.0],
-                },
-            )
-
-        def split_maps(dataset):
-            test = dict(zip(dataset.test_users.tolist(), dataset.test_items.tolist(), strict=True))
-            val = dict(zip(dataset.val_users.tolist(), dataset.val_items.tolist(), strict=True))
-            return test, val
-
-        forward = _assign_indices_and_split(frame(["B12", "B13"]))
-        reversed_ties = _assign_indices_and_split(frame(["B13", "B12"]))
-        assert split_maps(forward) == split_maps(reversed_ties)
+        forward = _assign_indices_and_split(_tied_timestamp_frame(["B12", "B13"]))
+        reversed_ties = _assign_indices_and_split(_tied_timestamp_frame(["B13", "B12"]))
+        assert _split_maps(forward) == _split_maps(reversed_ties)
         assert (forward.train_ui != reversed_ties.train_ui).nnz == 0
 
 
@@ -263,11 +272,7 @@ class TestReviewCache:
         )
         reviews.write_parquet(tmp_path / "Books.parquet")
 
-        def boom(*args, **kwargs):
-            msg = "build_dataset rebuilt the cache despite a present one"
-            raise AssertionError(msg)
-
-        monkeypatch.setattr("holmes.data.preprocess._build_review_cache", boom)
+        monkeypatch.setattr("holmes.data.preprocess._build_review_cache", _fail_if_called)
         dataset = build_dataset(category="Books", cache_dir=tmp_path, min_user=1, min_item=1)
         assert dataset.n_users == 2
         assert dataset.n_items == 6
