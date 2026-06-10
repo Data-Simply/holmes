@@ -381,7 +381,11 @@ def _cmd_eval(args: argparse.Namespace) -> None:
     except json.JSONDecodeError as exc:
         msg = f"--params must be a JSON file or JSON string; could not parse {raw!r}: {exc}"
         raise SystemExit(msg) from exc
-    params = ALSParams.from_dict(spec)
+    try:
+        params = ALSParams.from_dict(spec)
+    except ValueError as exc:
+        msg = f"--params is not a valid ALS hyperparameter mapping: {exc}"
+        raise SystemExit(msg) from exc
     result = evaluate_config(
         params,
         Dataset.load(args.data),

@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from holmes.config import EVAL_SAMPLE_USERS
+from holmes.config import EVAL_SAMPLE_SEED, EVAL_SAMPLE_USERS
 
 if TYPE_CHECKING:
     import scipy.sparse as sp
@@ -95,25 +95,26 @@ def _train_memorization_ndcg(rec_train: np.ndarray, train_ui: sp.csr_matrix, use
     return float(np.mean(dcg / ideal_dcg))
 
 
-def _reconstruction_error(model: ALSRecommender, dataset: Dataset, seed: int) -> float:
+def _reconstruction_error(model: ALSRecommender, dataset: Dataset) -> float:
     """Mean squared preference error ``(1 - xu . yi)^2`` on sampled observed interactions.
 
     A high or seed-unstable value indicates the factorization has not fit the observed
     positives — typically too few iterations or factors. Samples observed entries directly from
     the CSR ``indptr``/``indices`` rather than expanding the whole matrix to COO, so cost is
-    ``O(_RECON_SAMPLE)`` regardless of how many millions of nonzeros ``train_ui`` holds.
+    ``O(_RECON_SAMPLE)`` regardless of how many millions of nonzeros ``train_ui`` holds. The
+    sample is drawn with the fixed :data:`~holmes.config.EVAL_SAMPLE_SEED` so every fit is
+    scored on the identical entries.
 
     Args:
         model: A fitted recommender.
         dataset: The dataset whose training matrix supplies observed entries.
-        seed: Seed for sampling observed entries.
 
     Returns:
         float: Mean squared error against the implicit target preference of 1.
     """
     train_ui = dataset.train_ui
     n_obs = train_ui.nnz
-    rng = np.random.default_rng(seed)
+    rng = np.random.default_rng(EVAL_SAMPLE_SEED)
     flat = rng.choice(n_obs, size=_RECON_SAMPLE, replace=False) if n_obs > _RECON_SAMPLE else np.arange(n_obs)
     cols = train_ui.indices[flat]
     rows = np.searchsorted(train_ui.indptr, flat, side="right") - 1
@@ -127,22 +128,26 @@ def compute_diagnostics(
     k: int,
     *,
     split: str = "test",
-    seed: int = 0,
 ) -> dict[str, float]:
     """Compute the full diagnostic battery for one fitted model.
+
+    All evaluation-time sampling uses the fixed :data:`~holmes.config.EVAL_SAMPLE_SEED`,
+    deliberately decoupled from the fit seed: re-running a config with another ``--seed``
+    changes only the model, never the evaluated population, so cross-seed score spread
+    measures model stability alone.
 
     Args:
         model: A recommender already fit on ``dataset.train_ui``.
         dataset: The dataset providing held-out positives and popularity.
         k: Ranking cut-off for all top-k metrics.
         split: Either ``"val"`` or ``"test"``; selects the held-out positives to score.
-        seed: Seed for evaluation-user and reconstruction sampling.
 
     Returns:
         dict[str, float]: One scalar per diagnostic (see module docstring).
 
     Raises:
-        ValueError: If ``split`` is not ``"val"`` or ``"test"``.
+        ValueError: If ``split`` is not ``"val"`` or ``"test"``, or the selected split has no
+            held-out users (every metric would be a silent NaN).
     """
     if split == "test":
         held_users, held_items = dataset.test_users, dataset.test_items
@@ -155,8 +160,11 @@ def compute_diagnostics(
     # Sample positions into the parallel held-out arrays — keeps users and their relevant items
     # aligned with no per-call array sized to all n_users.
     n_held = len(held_users)
+    if n_held == 0:
+        msg = f"Split {split!r} has no held-out users; every metric would be NaN. Rebuild the dataset."
+        raise ValueError(msg)
     if n_held > EVAL_SAMPLE_USERS:
-        selection = np.random.default_rng(seed).choice(n_held, size=EVAL_SAMPLE_USERS, replace=False)
+        selection = np.random.default_rng(EVAL_SAMPLE_SEED).choice(n_held, size=EVAL_SAMPLE_USERS, replace=False)
         users, relevant = held_users[selection], held_items[selection]
     else:
         users, relevant = held_users, held_items
@@ -200,5 +208,5 @@ def compute_diagnostics(
         "novelty": novelty,
         "tail_recall": tail_recall,
         "mean_factor_norm": mean_factor_norm,
-        "train_recon_error": _reconstruction_error(model, dataset, seed),
+        "train_recon_error": _reconstruction_error(model, dataset),
     }

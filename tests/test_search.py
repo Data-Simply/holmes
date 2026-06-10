@@ -212,6 +212,25 @@ def test_load_trajectory_missing_file_returns_empty(tmp_path):
     assert load_trajectory(tmp_path / "absent.json") == []
 
 
+def test_load_trajectory_corrupted_file_raises_naming_the_path(tmp_path):
+    """A truncated/corrupt trajectory must surface a descriptive error, not a bare JSONDecodeError
+    traceback that leaves the agent guessing which file broke."""
+    path = tmp_path / "trajectory.json"
+    path.write_text('[{"iteration": 1, "par')  # a write cut short
+    with pytest.raises(ValueError, match=r"trajectory\.json"):
+        load_trajectory(path)
+
+
+def test_trajectory_writes_are_atomic_and_leave_no_temp_file(books_dataset, trajectory_path, in_bounds_params):
+    """Persistence goes through a sibling temp file + os.replace, so a kill mid-write can never
+    truncate the trajectory; after a successful write the temp file must be gone."""
+    spec = {"params": in_bounds_params, "hypothesis": {}}
+    run_iteration(books_dataset, spec, trajectory_path, seed=SEED, k=10)
+    leftovers = [p for p in trajectory_path.parent.iterdir() if p.name != trajectory_path.name]
+    assert leftovers == []
+    assert len(load_trajectory(trajectory_path)) == 1
+
+
 def test_run_iteration_prints_entry_as_json(books_dataset, trajectory_path, in_bounds_params, capsys):
     """The appended entry is echoed to stdout as JSON so the agent reads it without a second command."""
     spec = {"params": in_bounds_params, "hypothesis": {}}

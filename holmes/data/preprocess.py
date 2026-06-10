@@ -142,7 +142,10 @@ def _deduplicate_interactions(reviews: pl.LazyFrame, min_rating: float) -> pl.La
         min_rating: Minimum star rating for a review to count as a positive interaction.
 
     Returns:
-        pl.LazyFrame: One row per ``(user_id, parent_asin)`` with the most recent timestamp.
+        pl.LazyFrame: One row per ``(user_id, parent_asin)``: the most recent review's timestamp
+        AND rating (ties on timestamp keep the higher rating). The kept row is one real review —
+        aggregating the columns independently could pair the newest timestamp with an older
+        review's higher rating, inflating its confidence weight ``c_ui = 1 + alpha * r``.
     """
     return (
         reviews.select(_USER, _ITEM, _RATING, _TIME)
@@ -151,7 +154,8 @@ def _deduplicate_interactions(reviews: pl.LazyFrame, min_rating: float) -> pl.La
             pl.col(_USER).is_not_null() & pl.col(_ITEM).is_not_null() & (pl.col(_USER) != "") & (pl.col(_ITEM) != ""),
         )
         .group_by(_USER, _ITEM)
-        .agg(pl.col(_TIME).max(), pl.col(_RATING).max())
+        # sort_by is value-based, so the kept row is deterministic regardless of group row order.
+        .agg(pl.col(_TIME, _RATING).sort_by(_TIME, _RATING).last())
     )
 
 

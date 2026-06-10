@@ -67,6 +67,15 @@ class TestCmdEval:
         with pytest.raises(SystemExit, match="--params must be a JSON file or JSON string"):
             _cmd_eval(args)
 
+    def test_wrong_shaped_params_json_reports_friendly_error(self, tmp_path):
+        """Feeding eval a results-file-shaped JSON (nested 'params') must error, not silently
+        evaluate the all-default config and report it as the final score."""
+        spec = tmp_path / "grid.json"
+        spec.write_text(json.dumps({"params": {"factors": 64}, "seed": 0, "score": 0.1}))
+        args = _build_parser().parse_args(["eval", "--data", "does-not-exist", "--params", str(spec)])
+        with pytest.raises(SystemExit, match="params"):
+            _cmd_eval(args)
+
 
 class TestCmdPreprocess:
     def test_default_out_namespaces_by_category(self, books_dataset, tmp_path, monkeypatch):

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import time
 from typing import TYPE_CHECKING, NotRequired, TypedDict
 
@@ -61,10 +62,16 @@ def select_best(trials: list[EvalResult]) -> EvalResult:
         EvalResult: The highest-scoring trial.
 
     Raises:
-        ValueError: If ``trials`` is empty, rather than surfacing an opaque ``max()`` error.
+        ValueError: If ``trials`` is empty (rather than surfacing an opaque ``max()`` error), or
+            any score is non-finite — NaN comparisons are all False, so ``max`` over NaN keys
+            silently returns an arbitrary trial instead of failing.
     """
     if len(trials) == 0:
         msg = "No trials were evaluated; cannot select a best configuration."
+        raise ValueError(msg)
+    n_non_finite = sum(1 for trial in trials if not math.isfinite(trial["score"]))
+    if n_non_finite:
+        msg = f"{n_non_finite} of {len(trials)} trials have non-finite scores; refusing to select a best."
         raise ValueError(msg)
     # `max` keeps the earliest trial on ties; both callers (grid's Cartesian order, bayes's seeded
     # sampler) pass trials in a deterministic order, so the selection is deterministic.
@@ -85,7 +92,8 @@ def evaluate_config(
     Args:
         params: The hyperparameters to evaluate.
         dataset: Preprocessed interaction matrix with held-out positives.
-        seed: Random seed for the fit and diagnostic sampling.
+        seed: Random seed for the fit (diagnostic sampling uses the fixed
+            :data:`~holmes.config.EVAL_SAMPLE_SEED`).
         k: Ranking cut-off for all top-k metrics.
         split: Held-out split to score (``"val"`` during search, ``"test"`` for reporting).
         show_progress: Forwarded to :meth:`ALSRecommender.fit`.
@@ -100,7 +108,7 @@ def evaluate_config(
     fit_time_seconds = time.perf_counter() - fit_start
 
     eval_start = time.perf_counter()
-    diagnostics = compute_diagnostics(model, dataset, k, split=split, seed=seed)
+    diagnostics = compute_diagnostics(model, dataset, k, split=split)
     eval_time_seconds = time.perf_counter() - eval_start
 
     metrics = {**diagnostics, "fit_time_seconds": fit_time_seconds, "eval_time_seconds": eval_time_seconds}

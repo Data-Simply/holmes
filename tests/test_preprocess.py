@@ -5,11 +5,9 @@ not tested here, consistent with treating I/O as an external dependency.
 """
 
 import polars as pl
-import pytest
 
 from holmes.data.preprocess import (
     _REVIEW_COLUMNS,
-    AMAZON_CATEGORIES,
     _assign_indices_and_split,
     _build_review_cache,
     _deduplicate_interactions,
@@ -38,6 +36,37 @@ class TestDeduplicateInteractions:
         assert out.height == 2
         latest = out.filter(pl.col("parent_asin") == "B001")["timestamp"].item()
         assert latest == 30
+
+    def test_downgraded_rereview_keeps_the_latest_reviews_rating(self):
+        """The kept row must be one real review — never the newest timestamp paired with an
+        older review's higher rating, which would inflate confidence (c_ui = 1 + alpha * r)."""
+        reviews = _reviews(
+            [
+                {"user_id": "cust_a", "parent_asin": "B001", "rating": 5.0, "timestamp": 10},
+                {"user_id": "cust_a", "parent_asin": "B001", "rating": 4.0, "timestamp": 20},  # later downgrade
+            ],
+        )
+        out = _deduplicate_interactions(reviews, min_rating=4.0).collect()
+        assert out.to_dicts() == [{"user_id": "cust_a", "parent_asin": "B001", "timestamp": 20, "rating": 4.0}]
+
+    def test_tied_timestamps_keep_the_higher_rating_regardless_of_row_order(self):
+        """Two reviews tied on timestamp must dedupe identically for either input order — the
+        rating tiebreaker makes the kept row value-determined, not row-order-determined."""
+        forward = _reviews(
+            [
+                {"user_id": "cust_a", "parent_asin": "B001", "rating": 4.0, "timestamp": 10},
+                {"user_id": "cust_a", "parent_asin": "B001", "rating": 5.0, "timestamp": 10},
+            ],
+        )
+        backward = _reviews(
+            [
+                {"user_id": "cust_a", "parent_asin": "B001", "rating": 5.0, "timestamp": 10},
+                {"user_id": "cust_a", "parent_asin": "B001", "rating": 4.0, "timestamp": 10},
+            ],
+        )
+        expected = [{"user_id": "cust_a", "parent_asin": "B001", "timestamp": 10, "rating": 5.0}]
+        assert _deduplicate_interactions(forward, min_rating=4.0).collect().to_dicts() == expected
+        assert _deduplicate_interactions(backward, min_rating=4.0).collect().to_dicts() == expected
 
     def test_drops_low_rated_null_and_empty_rows(self):
         reviews = _reviews(

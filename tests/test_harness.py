@@ -17,6 +17,13 @@ class TestSelectBest:
         with pytest.raises(ValueError, match="No trials"):
             select_best([])
 
+    def test_non_finite_scores_are_rejected(self):
+        """A NaN score must fail loudly: max() over NaN keys silently returns an arbitrary trial
+        (every comparison is False), crowning a garbage winner with no error."""
+        trials = [{"score": float("nan"), "tag": "a"}, {"score": 0.2, "tag": "b"}]
+        with pytest.raises(ValueError, match="non-finite"):
+            select_best(trials)
+
 
 class TestEvaluateConfig:
     def test_score_equals_primary_metric_and_records_seed(self, books_dataset):
