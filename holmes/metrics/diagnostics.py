@@ -176,11 +176,10 @@ def compute_diagnostics(
     rec_train = model.recommend(users, dataset.train_ui, k, filter_seen=False)
     train_ndcg = _train_memorization_ndcg(rec_train, dataset.train_ui, users, k)
 
-    # Diversity and popularity bias (percentiles are cached on the dataset, computed once).
+    # Diversity and popularity bias (percentiles and self-information are cached on the dataset).
     coverage = len(np.unique(rec)) / dataset.n_items
     avg_rec_popularity = float(dataset.popularity_percentile[rec].mean())
-    pop_safe = np.maximum(dataset.item_popularity, 1) / dataset.n_users
-    novelty = float((-np.log2(pop_safe))[rec].mean())
+    novelty = float(dataset.item_self_information[rec].mean())
 
     # Tail serving: recall over users whose held-out item is below the head-popularity cutoff.
     # No tail users in the sample folds to 0.0 (an empty-denominator case that, with thousands of

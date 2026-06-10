@@ -195,8 +195,9 @@ def _assign_indices_and_split(interactions: pl.DataFrame) -> Dataset:
     Returns:
         Dataset: Training matrix plus validation and test held-out positives.
     """
-    # Assign contiguous integer indices, then drop the wide string id columns immediately so every
-    # downstream copy (sort, windows, filters, joins) carries only narrow integer columns.
+    # Assign contiguous integer indices: k-core filtering leaves gaps in the pre-filter id codes
+    # (and the unit tests pass raw string ids), so re-rank either way. Dense rank is monotone, so
+    # the ordering — and thus the final index assignment — matches the original id sort order.
     indexed = interactions.with_columns(
         (pl.col(_USER).rank("dense") - 1).cast(pl.Int32).alias(_USER_IDX),
         (pl.col(_ITEM).rank("dense") - 1).cast(pl.Int32).alias(_ITEM_IDX),
@@ -297,6 +298,15 @@ def build_dataset(
         reviews = reviews.head(max_interactions)
     interactions = _deduplicate_interactions(reviews, min_rating).collect(engine="streaming")
     print(f"  {interactions.height:,} unique interactions after rating filter and dedup")
+
+    # Replace the wide string id columns with dense Int32 codes before the iterative k-core:
+    # each round window-aggregates over both keys, and re-hashing tens of millions of strings
+    # per round dominates preprocessing on real categories. Dense rank preserves the string
+    # sort order, so the final index assignment downstream is unchanged.
+    interactions = interactions.with_columns(
+        (pl.col(_USER).rank("dense") - 1).cast(pl.Int32),
+        (pl.col(_ITEM).rank("dense") - 1).cast(pl.Int32),
+    )
 
     interactions = _k_core_filter(interactions, min_user, min_item)
     if interactions.height == 0:

@@ -224,6 +224,33 @@ class TestReviewCache:
             {"user_id": "cust_b", "parent_asin": "B002", "rating": 4.0, "timestamp": 20},
         ]
 
+    def test_build_dataset_pins_the_full_pipeline_output(self, tmp_path):
+        """Characterization of the whole preprocess pipeline on a tiny cache: exact indices,
+        matrix values, and splits. Internal refactors (e.g. when ids are encoded to integers)
+        must not change any of it."""
+        reviews = pl.DataFrame(
+            {
+                "user_id": ["cust_a", "cust_a", "cust_a", "cust_b", "cust_b", "cust_b"],
+                "parent_asin": ["B10", "B11", "B12", "B20", "B21", "B22"],
+                "rating": [5.0, 4.0, 5.0, 5.0, 4.0, 5.0],
+                "timestamp": [1, 2, 3, 1, 2, 3],
+            },
+        )
+        reviews.write_parquet(tmp_path / "Books.parquet")
+
+        dataset = build_dataset(category="Books", cache_dir=tmp_path, min_user=1, min_item=1)
+
+        # Ids rank alphabetically: cust_a -> 0, cust_b -> 1; B10..B22 -> 0..5. Per user the last
+        # interaction is test, the second-last val, the rest train (at their raw ratings).
+        assert dataset.train_ui.toarray().tolist() == [
+            [5.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 5.0, 0.0, 0.0],
+        ]
+        assert dataset.val_users.tolist() == [0, 1]
+        assert dataset.val_items.tolist() == [1, 4]
+        assert dataset.test_users.tolist() == [0, 1]
+        assert dataset.test_items.tolist() == [2, 5]
+
     def test_build_dataset_reuses_existing_cache_without_rereading_source(self, tmp_path, monkeypatch):
         """A present cache is scanned directly; the cache builder is never invoked."""
         reviews = pl.DataFrame(
