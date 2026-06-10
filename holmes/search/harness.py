@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 import time
 from typing import TYPE_CHECKING, NotRequired, TypedDict
@@ -11,6 +12,8 @@ from holmes.config import DEFAULT_SEED, TOP_K
 from holmes.metrics.diagnostics import compute_diagnostics
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from holmes.config import ALSParams
     from holmes.data.dataset import Dataset
 
@@ -76,6 +79,44 @@ def select_best(trials: list[EvalResult]) -> EvalResult:
     # `max` keeps the earliest trial on ties; both callers (grid's Cartesian order, bayes's seeded
     # sampler) pass trials in a deterministic order, so the selection is deterministic.
     return max(trials, key=lambda r: r["score"])
+
+
+def log_trial(strategy: str, index: int, total: int, result: EvalResult) -> None:
+    """Print one trial's progress line in the format shared by every search driver.
+
+    Args:
+        strategy: Strategy name for the log prefix (``grid``/``random``/``bayes``).
+        index: 1-based trial counter.
+        total: The strategy's total trial count (its share of the fixed budget).
+        result: The just-evaluated trial.
+    """
+    metrics = result["metrics"]
+    timing = f"fit={metrics['fit_time_seconds']:.2f}s eval={metrics['eval_time_seconds']:.2f}s"
+    print(f"[{strategy} {index}/{total}] {result['params']} -> val ndcg={result['score']:.4f}  {timing}")
+
+
+def write_search_output(strategy: str, trials: list[EvalResult], out_path: Path | None) -> SearchOutput:
+    """Assemble a strategy's :class:`SearchOutput`, optionally persist it, and report the best.
+
+    The single exit point for the grid/random/bayes drivers, so the results-file schema and the
+    console summary cannot drift between strategies.
+
+    Args:
+        strategy: Strategy name recorded in the output.
+        trials: Every evaluated trial, in evaluation order.
+        out_path: Optional path for the results JSON.
+
+    Returns:
+        SearchOutput: ``trials`` plus the highest-scoring ``best``.
+    """
+    best = select_best(trials)
+    output: SearchOutput = {"strategy": strategy, "n_trials": len(trials), "best": best, "trials": trials}
+    if out_path is not None:
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(output, indent=2))
+        print(f"Wrote {len(trials)} {strategy} trials to {out_path}")
+    print(f"Best {strategy} config: {best['params']} (val ndcg={best['score']:.4f})")
+    return output
 
 
 def evaluate_config(

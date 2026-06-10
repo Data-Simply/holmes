@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import itertools
-import json
 from typing import TYPE_CHECKING
 
 from holmes.config import DEFAULT_SEED, GRID_SPACE, TOP_K, ALSParams
-from holmes.search.harness import EvalResult, SearchOutput, evaluate_config, select_best
+from holmes.search.harness import EvalResult, SearchOutput, evaluate_config, log_trial, write_search_output
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -50,15 +49,5 @@ def run_grid(
     for i, params in enumerate(configs, start=1):
         result = evaluate_config(params, dataset, seed=seed, k=k, split="val")
         trials.append(result)
-        metrics = result["metrics"]
-        timing = f"fit={metrics['fit_time_seconds']:.2f}s eval={metrics['eval_time_seconds']:.2f}s"
-        print(f"[grid {i}/{len(configs)}] {params.to_dict()} -> val ndcg={result['score']:.4f}  {timing}")
-
-    best = select_best(trials)
-    output: SearchOutput = {"strategy": "grid", "n_trials": len(trials), "best": best, "trials": trials}
-    if out_path is not None:
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(json.dumps(output, indent=2))
-        print(f"Wrote {len(trials)} grid trials to {out_path}")
-    print(f"Best grid config: {best['params']} (val ndcg={best['score']:.4f})")
-    return output
+        log_trial("grid", i, len(configs), result)
+    return write_search_output("grid", trials, out_path)

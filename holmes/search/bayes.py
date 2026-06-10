@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from functools import partial
 from typing import TYPE_CHECKING
 
@@ -17,7 +16,7 @@ from holmes.config import (
     TOP_K,
     ALSParams,
 )
-from holmes.search.harness import EvalResult, SearchOutput, evaluate_config, select_best
+from holmes.search.harness import EvalResult, SearchOutput, evaluate_config, log_trial, write_search_output
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -66,11 +65,7 @@ def _objective(
     result = evaluate_config(params, dataset, seed=seed, k=k, split="val")
     result["trial_number"] = trial.number
     trials.append(result)
-    metrics = result["metrics"]
-    timing = f"fit={metrics['fit_time_seconds']:.2f}s eval={metrics['eval_time_seconds']:.2f}s"
-    print(
-        f"[bayes {trial.number + 1}/{MAX_ITERATIONS}] {params.to_dict()} -> val ndcg={result['score']:.4f}  {timing}",
-    )
+    log_trial("bayes", trial.number + 1, MAX_ITERATIONS, result)
     return result["score"]
 
 
@@ -106,11 +101,4 @@ def run_bayes(
         n_trials=MAX_ITERATIONS,
     )
 
-    best = select_best(trials)
-    output: SearchOutput = {"strategy": "bayes", "n_trials": len(trials), "best": best, "trials": trials}
-    if out_path is not None:
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(json.dumps(output, indent=2))
-        print(f"Wrote {len(trials)} bayes trials to {out_path}")
-    print(f"Best bayes config: {best['params']} (val ndcg={best['score']:.4f})")
-    return output
+    return write_search_output("bayes", trials, out_path)
