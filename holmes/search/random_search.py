@@ -8,7 +8,15 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from holmes.config import DEFAULT_SEED, MAX_ITERATIONS, RANDOM_SPACE, TOP_K, ALSParams
+from holmes.config import (
+    DEFAULT_SEED,
+    INTEGER_PARAMS,
+    MAX_ITERATIONS,
+    PARAM_SCALES,
+    RANDOM_SPACE,
+    TOP_K,
+    ALSParams,
+)
 from holmes.search.harness import EvalResult, SearchOutput, evaluate_config, select_best
 
 if TYPE_CHECKING:
@@ -25,20 +33,20 @@ def _log_uniform(rng: np.random.Generator, low: float, high: float) -> float:
 def _sample_params(rng: np.random.Generator) -> ALSParams:
     """Draw one :class:`ALSParams` from ``rng`` over :data:`holmes.config.RANDOM_SPACE`.
 
-    The log/linear scale per hyperparameter matches the Bayesian sampler: ``factors``,
-    ``regularization``, and ``alpha`` span orders of magnitude so they are sampled log-uniformly;
-    ``iterations`` is a small linear integer count sampled uniformly over its inclusive range.
+    The log/linear scale per hyperparameter comes from the shared
+    :data:`holmes.config.PARAM_SCALES`, which the Bayesian sampler also reads — the two
+    strategies sample the same measure over the hull by construction, not by convention.
     """
-    factors_lo, factors_hi = RANDOM_SPACE["factors"]
-    reg_lo, reg_hi = RANDOM_SPACE["regularization"]
-    iter_lo, iter_hi = RANDOM_SPACE["iterations"]
-    alpha_lo, alpha_hi = RANDOM_SPACE["alpha"]
-    return ALSParams(
-        factors=round(_log_uniform(rng, factors_lo, factors_hi)),
-        regularization=_log_uniform(rng, reg_lo, reg_hi),
-        iterations=int(rng.integers(int(iter_lo), int(iter_hi) + 1)),
-        alpha=_log_uniform(rng, alpha_lo, alpha_hi),
-    )
+    values: dict[str, float] = {}
+    for name, (low, high) in RANDOM_SPACE.items():
+        if PARAM_SCALES[name] == "log":
+            sampled = _log_uniform(rng, low, high)
+        elif name in INTEGER_PARAMS:
+            sampled = int(rng.integers(int(low), int(high) + 1))
+        else:
+            sampled = float(rng.uniform(low, high))
+        values[name] = round(sampled) if name in INTEGER_PARAMS else sampled
+    return ALSParams.from_dict(values)
 
 
 def run_random(

@@ -8,7 +8,15 @@ from typing import TYPE_CHECKING
 
 import optuna
 
-from holmes.config import BAYES_SPACE, DEFAULT_SEED, MAX_ITERATIONS, TOP_K, ALSParams
+from holmes.config import (
+    BAYES_SPACE,
+    DEFAULT_SEED,
+    INTEGER_PARAMS,
+    MAX_ITERATIONS,
+    PARAM_SCALES,
+    TOP_K,
+    ALSParams,
+)
 from holmes.search.harness import EvalResult, SearchOutput, evaluate_config, select_best
 
 if TYPE_CHECKING:
@@ -20,19 +28,18 @@ if TYPE_CHECKING:
 def _suggest_params(trial: optuna.Trial) -> ALSParams:
     """Sample an :class:`ALSParams` from the Optuna trial over :data:`BAYES_SPACE`.
 
-    The log/linear scale per hyperparameter is intrinsic: ``factors``, ``regularization``, and
-    ``alpha`` span orders of magnitude so they are log-scaled; ``iterations`` is a small linear count.
+    The log/linear scale per hyperparameter comes from the shared
+    :data:`holmes.config.PARAM_SCALES`, which the random sampler also reads — the two
+    strategies sample the same measure over the hull by construction, not by convention.
     """
-    factors_lo, factors_hi = BAYES_SPACE["factors"]
-    reg_lo, reg_hi = BAYES_SPACE["regularization"]
-    iter_lo, iter_hi = BAYES_SPACE["iterations"]
-    alpha_lo, alpha_hi = BAYES_SPACE["alpha"]
-    return ALSParams(
-        factors=trial.suggest_int("factors", int(factors_lo), int(factors_hi), log=True),
-        regularization=trial.suggest_float("regularization", reg_lo, reg_hi, log=True),
-        iterations=trial.suggest_int("iterations", int(iter_lo), int(iter_hi)),
-        alpha=trial.suggest_float("alpha", alpha_lo, alpha_hi, log=True),
-    )
+    values: dict[str, float] = {}
+    for name, (low, high) in BAYES_SPACE.items():
+        log = PARAM_SCALES[name] == "log"
+        if name in INTEGER_PARAMS:
+            values[name] = trial.suggest_int(name, int(low), int(high), log=log)
+        else:
+            values[name] = trial.suggest_float(name, low, high, log=log)
+    return ALSParams.from_dict(values)
 
 
 def _objective(

@@ -34,6 +34,14 @@ def _iter_namespace(**overrides):
     return argparse.Namespace(**{**defaults, **overrides})
 
 
+@pytest.mark.parametrize("command", ["holmes-iter", "heuristic"])
+def test_budget_is_not_overridable_per_call(command):
+    """CLAUDE.md: the fit budget is the single MAX_ITERATIONS with no per-call override — a
+    --max-iterations flag would let HOLMES quietly run on a larger budget than grid/random/bayes."""
+    with pytest.raises(SystemExit):
+        _build_parser().parse_args([command, "--data", "x", "--max-iterations", "5"])
+
+
 class TestCmdRanges:
     def test_prints_hp_bounds_and_max_iterations(self, capsys):
         """The agent calls this to discover BOTH the supported HP bounds and the iteration budget,

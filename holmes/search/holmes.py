@@ -58,6 +58,9 @@ class TrajectoryEntry(TypedDict):
         iteration: 1-based iteration number.
         params: The ALS hyperparameters fit this iteration.
         seed: The random seed fit.
+        k: Ranking cut-off used, recorded (as grid/random/bayes trials do) so a cut-off drift
+            between iterations is visible in the log instead of silently inflating scores.
+        split: Held-out split scored.
         hypothesis: The pre-run falsifiable hypothesis (mechanism / outcome / falsifiers).
         metrics: The diagnostic battery for this fit.
         score: The primary metric (NDCG@K).
@@ -68,6 +71,8 @@ class TrajectoryEntry(TypedDict):
     iteration: int
     params: dict[str, float]
     seed: int
+    k: int
+    split: str
     hypothesis: dict[str, str]
     metrics: dict[str, float]
     score: float
@@ -161,7 +166,6 @@ def run_iteration(
     *,
     seed: int = DEFAULT_SEED,
     k: int = TOP_K,
-    max_iterations: int = MAX_ITERATIONS,
     show_progress: bool = False,
 ) -> TrajectoryEntry:
     """Run one HOLMES iteration from an input spec and append it to the trajectory.
@@ -174,14 +178,15 @@ def run_iteration(
     keeping this function dict-based lets the CLI build the spec from either a JSON file or
     individual flags.
 
+    The trajectory length is capped at the shared :data:`holmes.config.MAX_ITERATIONS` with no
+    per-call override, so HOLMES runs on exactly the fit budget grid/random/bayes get.
+
     Args:
         dataset: Preprocessed interaction matrix.
         spec: Iteration input as an in-memory mapping ``{"params": {...}, "hypothesis": {...}}``.
         trajectory_path: Path to the append-only trajectory log.
         seed: Random seed fit this iteration.
         k: Ranking cut-off.
-        max_iterations: Hard cap on total trajectory length, shared across grid/bayes/HOLMES so
-            the search-budget comparison is fixed. Defaults to :data:`holmes.config.MAX_ITERATIONS`.
         show_progress: Forwarded to :func:`evaluate_config`.
 
     Returns:
@@ -189,7 +194,7 @@ def run_iteration(
 
     Raises:
         KeyError: If ``spec`` lacks a ``params`` field.
-        RuntimeError: If the trajectory has already reached ``max_iterations``.
+        RuntimeError: If the trajectory has already reached :data:`holmes.config.MAX_ITERATIONS`.
     """
     if "params" not in spec:
         msg = "Iteration spec must contain a 'params' field."
@@ -199,10 +204,10 @@ def run_iteration(
     hypothesis = {**_EMPTY_HYPOTHESIS, **spec.get("hypothesis", {})}
 
     trajectory = load_trajectory(trajectory_path)
-    if len(trajectory) >= max_iterations:
+    if len(trajectory) >= MAX_ITERATIONS:
         msg = (
             f"Budget exhausted: trajectory has {len(trajectory)} iterations, "
-            f"--max-iterations is {max_iterations}. Stop and report the best entry; do not "
+            f"the shared fit budget is {MAX_ITERATIONS}. Stop and report the best entry; do not "
             "fit further configs."
         )
         raise RuntimeError(msg)
@@ -212,6 +217,8 @@ def run_iteration(
         "iteration": len(trajectory) + 1,
         "params": params.to_dict(),
         "seed": seed,
+        "k": result["k"],
+        "split": result["split"],
         "hypothesis": hypothesis,
         "metrics": result["metrics"],
         "score": result["score"],

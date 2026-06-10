@@ -116,6 +116,23 @@ class ALSParams:
         return cls(**values)
 
 
+PARAM_SCALES: dict[str, str] = {
+    "factors": "log",
+    "regularization": "log",
+    "iterations": "linear",
+    "alpha": "log",
+}
+"""Sampling scale per hyperparameter, shared by the random and Bayesian samplers.
+
+Both samplers read this table so the two strategies draw from the same measure over the hull by
+construction — if the scales drifted apart, the benchmark would compare sampling distributions,
+not optimizer behavior. ``factors``/``regularization``/``alpha`` span orders of magnitude (log);
+``iterations`` is a small linear count."""
+
+INTEGER_PARAMS = frozenset(field.name for field in fields(ALSParams) if field.type in ("int", int))
+"""Hyperparameters taking integer values, derived from the dataclass; samplers draw/round these."""
+
+
 # --- Grid-search space -----------------------------------------------------
 # Anchored on the heuristic point estimate. With the rating-weighted matrix (r in {4,5}; see
 # ``holmes/data/preprocess.py``), Hu et al. confidence ``c_ui = 1 + alpha * r_ui`` sets the
