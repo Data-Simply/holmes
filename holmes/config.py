@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
+from typing import get_type_hints
 
 # --- Paths -----------------------------------------------------------------
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -108,10 +109,8 @@ class ALSParams:
             msg = f"Missing hyperparameter keys {missing}; expected exactly {field_names}."
             raise ValueError(msg)
         values = {
-            field.name: (
-                _coerce_int(data[field.name], field.name) if field.type in ("int", int) else float(data[field.name])
-            )
-            for field in fields(cls)
+            name: (_coerce_int(data[name], name) if name in INTEGER_PARAMS else float(data[name]))
+            for name in field_names
         }
         return cls(**values)
 
@@ -129,8 +128,11 @@ construction — if the scales drifted apart, the benchmark would compare sampli
 not optimizer behavior. ``factors``/``regularization``/``alpha`` span orders of magnitude (log);
 ``iterations`` is a small linear count."""
 
-INTEGER_PARAMS = frozenset(field.name for field in fields(ALSParams) if field.type in ("int", int))
-"""Hyperparameters taking integer values, derived from the dataclass; samplers draw/round these."""
+INTEGER_PARAMS = frozenset(name for name, type_ in get_type_hints(ALSParams).items() if type_ is int)
+"""Hyperparameters taking integer values, the single source of integer-ness for both ``from_dict``
+coercion and the samplers' draw/round. Derived from resolved type hints (``get_type_hints``
+collapses the stringized annotations ``from __future__`` produces) so a non-``int`` field can't be
+silently treated as integer."""
 
 
 # --- Grid-search space -----------------------------------------------------
