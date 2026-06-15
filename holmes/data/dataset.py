@@ -69,6 +69,17 @@ class Dataset:
         return (ranks - 1) / max(len(ranks) - 1, 1)
 
     @cached_property
+    def item_self_information(self) -> np.ndarray:
+        """Per-item self-information ``-log2(popularity / n_users)``, shape ``(n_items,)``.
+
+        The novelty diagnostic averages this over recommended items; cached because it depends
+        only on ``train_ui`` and would otherwise be rebuilt (two full O(n_items) passes) on
+        every diagnostics call. Zero-popularity items are floored at a count of 1 so the log
+        stays finite.
+        """
+        return -np.log2(np.maximum(self.item_popularity, 1) / self.n_users)
+
+    @cached_property
     def head_item_threshold(self) -> int:
         """Popularity count at or above which an item is in the popular 'head'.
 

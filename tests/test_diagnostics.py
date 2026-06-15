@@ -1,9 +1,13 @@
 """Tests for the diagnostic battery."""
 
+import inspect
+
+import numpy as np
 import pytest
 
 from holmes.als.model import ALSRecommender
 from holmes.config import ALSParams
+from holmes.data.dataset import Dataset
 from holmes.metrics.diagnostics import compute_diagnostics
 
 K = 10
@@ -13,7 +17,35 @@ K = 10
 def fitted_diagnostics(books_dataset):
     model = ALSRecommender(ALSParams(factors=32, regularization=0.01, iterations=20, alpha=40.0), seed=0)
     model.fit(books_dataset.train_ui)
-    return compute_diagnostics(model, books_dataset, k=K, split="test", seed=0)
+    return compute_diagnostics(model, books_dataset, k=K, split="test")
+
+
+class TestEvalSamplingIsDecoupledFromTheFitSeed:
+    def test_compute_diagnostics_takes_no_seed(self):
+        """Evaluation sampling uses the fixed EVAL_SAMPLE_SEED, never the fit seed: re-running a
+        config with another --seed must change only the model, not the evaluated population —
+        otherwise eval-sampling noise is indistinguishable from model instability. Locked
+        structurally: no seed can flow in at all."""
+        assert "seed" not in inspect.signature(compute_diagnostics).parameters
+
+    def test_sampled_eval_population_is_deterministic(self, books_dataset, monkeypatch):
+        """With more held-out users than the cap, two calls must sample the identical users
+        (identical metrics), so scores are comparable across runs."""
+        monkeypatch.setattr("holmes.metrics.diagnostics.EVAL_SAMPLE_USERS", 50)
+        model = ALSRecommender(ALSParams(factors=16, iterations=10), seed=0).fit(books_dataset.train_ui)
+        first = compute_diagnostics(model, books_dataset, k=K, split="test")
+        second = compute_diagnostics(model, books_dataset, k=K, split="test")
+        assert first == second
+
+
+def test_empty_held_out_split_raises(books_dataset):
+    """An empty split must fail loudly here, not propagate NaN into every trial score (where
+    select_best's max() would silently crown the first trial)."""
+    empty = np.array([], dtype=int)
+    dataset = Dataset(books_dataset.train_ui, empty, empty, empty, empty)
+    model = ALSRecommender(ALSParams(factors=16, iterations=5), seed=0).fit(dataset.train_ui)
+    with pytest.raises(ValueError, match="no held-out users"):
+        compute_diagnostics(model, dataset, k=K, split="val")
 
 
 class TestMetricRelationships:
@@ -34,7 +66,7 @@ class TestMetricRelationships:
     def test_invalid_split_raises(self, books_dataset):
         model = ALSRecommender(ALSParams(factors=16, iterations=5), seed=0).fit(books_dataset.train_ui)
         with pytest.raises(ValueError, match="split"):
-            compute_diagnostics(model, books_dataset, k=K, split="train", seed=0)
+            compute_diagnostics(model, books_dataset, k=K, split="train")
 
 
 class TestOverfittingSignal:
@@ -42,11 +74,9 @@ class TestOverfittingSignal:
         """Less regularization should memorize training history more, widening the gap."""
         params_weak = ALSParams(factors=64, regularization=1e-4, iterations=20, alpha=40.0)
         params_strong = ALSParams(factors=64, regularization=5.0, iterations=20, alpha=40.0)
-        weak = compute_diagnostics(
-            ALSRecommender(params_weak, seed=0).fit(books_dataset.train_ui), books_dataset, k=K, seed=0
-        )
+        weak = compute_diagnostics(ALSRecommender(params_weak, seed=0).fit(books_dataset.train_ui), books_dataset, k=K)
         strong = compute_diagnostics(
-            ALSRecommender(params_strong, seed=0).fit(books_dataset.train_ui), books_dataset, k=K, seed=0
+            ALSRecommender(params_strong, seed=0).fit(books_dataset.train_ui), books_dataset, k=K
         )
         assert weak["train_test_ndcg_gap"] > strong["train_test_ndcg_gap"]
 
@@ -64,7 +94,6 @@ class TestRegularizationSignal:
             ),
             books_dataset,
             k=K,
-            seed=0,
         )
         strong = compute_diagnostics(
             ALSRecommender(ALSParams(factors=32, regularization=30.0, iterations=15), seed=0).fit(
@@ -72,6 +101,5 @@ class TestRegularizationSignal:
             ),
             books_dataset,
             k=K,
-            seed=0,
         )
         assert strong["mean_factor_norm"] < weak["mean_factor_norm"]

@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import math
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, fields
 from pathlib import Path
+from typing import get_type_hints
 
 # --- Paths -----------------------------------------------------------------
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -23,6 +24,13 @@ with different seeds and aggregating externally, not by fitting multiple seeds p
 
 EVAL_SAMPLE_USERS = 5000
 """Cap on users scored during evaluation, for tractable diagnostics on large matrices."""
+
+EVAL_SAMPLE_SEED = 7919
+"""Fixed seed for all evaluation-time sampling (eval users, reconstruction entries).
+
+Deliberately decoupled from the fit ``--seed``: re-running a config with another seed must change
+only the model initialization, never the evaluated population — otherwise eval-sampling noise is
+indistinguishable from model instability in the seed-stability protocol."""
 
 HEAD_ITEM_FRACTION = 0.2
 """Fraction of items (by popularity) treated as the popular 'head'; the rest are the tail."""
@@ -74,22 +82,57 @@ class ALSParams:
 
     @classmethod
     def from_dict(cls, data: dict[str, float]) -> ALSParams:
-        """Build an :class:`ALSParams` from a dictionary, ignoring unknown keys.
+        """Build an :class:`ALSParams` from a mapping of exactly the hyperparameter fields.
+
+        Unknown and missing keys are rejected rather than silently dropped/defaulted — a typo'd
+        key or a wrong-shaped mapping (e.g. a results file passed to ``holmes eval --params``)
+        must error, not evaluate the all-default configuration. The field set is derived from
+        the dataclass so a new hyperparameter cannot be silently filtered out here.
 
         Args:
-            data: Mapping containing any subset of the hyperparameter fields.
+            data: Mapping containing exactly the hyperparameter fields.
 
         Returns:
-            ALSParams: Parsed parameters with defaults for missing fields.
+            ALSParams: The parsed parameters.
+
+        Raises:
+            ValueError: If ``data`` has unknown or missing keys, or a non-integral value for an
+                integer field.
         """
-        fields = {"factors", "regularization", "iterations", "alpha"}
-        filtered = {k: v for k, v in data.items() if k in fields}
-        return cls(
-            factors=_coerce_int(filtered.get("factors", cls.factors), "factors"),
-            regularization=float(filtered.get("regularization", cls.regularization)),
-            iterations=_coerce_int(filtered.get("iterations", cls.iterations), "iterations"),
-            alpha=float(filtered.get("alpha", cls.alpha)),
-        )
+        field_names = [field.name for field in fields(cls)]
+        unknown = sorted(set(data) - set(field_names))
+        if unknown:
+            msg = f"Unknown hyperparameter keys {unknown}; expected exactly {field_names}."
+            raise ValueError(msg)
+        missing = sorted(set(field_names) - set(data))
+        if missing:
+            msg = f"Missing hyperparameter keys {missing}; expected exactly {field_names}."
+            raise ValueError(msg)
+        values = {
+            name: (_coerce_int(data[name], name) if name in INTEGER_PARAMS else float(data[name]))
+            for name in field_names
+        }
+        return cls(**values)
+
+
+PARAM_SCALES: dict[str, str] = {
+    "factors": "log",
+    "regularization": "log",
+    "iterations": "linear",
+    "alpha": "log",
+}
+"""Sampling scale per hyperparameter, shared by the random and Bayesian samplers.
+
+Both samplers read this table so the two strategies draw from the same measure over the hull by
+construction — if the scales drifted apart, the benchmark would compare sampling distributions,
+not optimizer behavior. ``factors``/``regularization``/``alpha`` span orders of magnitude (log);
+``iterations`` is a small linear count."""
+
+INTEGER_PARAMS = frozenset(name for name, type_ in get_type_hints(ALSParams).items() if type_ is int)
+"""Hyperparameters taking integer values, the single source of integer-ness for both ``from_dict``
+coercion and the samplers' draw/round. Derived from resolved type hints (``get_type_hints``
+collapses the stringized annotations ``from __future__`` produces) so a non-``int`` field can't be
+silently treated as integer."""
 
 
 # --- Grid-search space -----------------------------------------------------

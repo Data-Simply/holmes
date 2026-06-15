@@ -3,13 +3,13 @@
 import argparse
 import functools
 import json
-from pathlib import Path
 
 import pytest
 
 from holmes.cli import _build_iter_spec, _build_parser, _cmd_eval, _cmd_heuristic, _cmd_preprocess, _cmd_ranges
 from holmes.config import HOLMES_SPACE, MAX_ITERATIONS
 from holmes.data.preprocess import AMAZON_CATEGORIES
+from holmes.search.heuristics import initial_hypothesis, initial_params
 
 
 def _build_or_fail(*, category, fail, dataset, **_):
@@ -34,6 +34,14 @@ def _iter_namespace(**overrides):
     return argparse.Namespace(**{**defaults, **overrides})
 
 
+@pytest.mark.parametrize("command", ["holmes-iter", "heuristic"])
+def test_budget_is_not_overridable_per_call(command):
+    """CLAUDE.md: the fit budget is the single MAX_ITERATIONS with no per-call override — a
+    --max-iterations flag would let HOLMES quietly run on a larger budget than grid/random/bayes."""
+    with pytest.raises(SystemExit):
+        _build_parser().parse_args([command, "--data", "x", "--max-iterations", "5"])
+
+
 class TestCmdRanges:
     def test_prints_hp_bounds_and_max_iterations(self, capsys):
         """The agent calls this to discover BOTH the supported HP bounds and the iteration budget,
@@ -56,15 +64,17 @@ class TestCmdEval:
         surfaces the friendly ``SystemExit`` message rather than a raw traceback.
         """
         overlong_invalid_json = "{not valid json" + "x" * 300
-        args = argparse.Namespace(
-            params=Path(overlong_invalid_json),
-            data=Path("does-not-exist"),
-            seed=0,
-            k=10,
-            split="test",
-            progress=False,
-        )
+        args = _build_parser().parse_args(["eval", "--data", "does-not-exist", "--params", overlong_invalid_json])
         with pytest.raises(SystemExit, match="--params must be a JSON file or JSON string"):
+            _cmd_eval(args)
+
+    def test_wrong_shaped_params_json_reports_friendly_error(self, tmp_path):
+        """Feeding eval a results-file-shaped JSON (nested 'params') must error, not silently
+        evaluate the all-default config and report it as the final score."""
+        spec = tmp_path / "grid.json"
+        spec.write_text(json.dumps({"params": {"factors": 64}, "seed": 0, "score": 0.1}))
+        args = _build_parser().parse_args(["eval", "--data", "does-not-exist", "--params", str(spec)])
+        with pytest.raises(SystemExit, match="params"):
             _cmd_eval(args)
 
 
@@ -129,17 +139,17 @@ class TestCmdPreprocess:
 
 class TestCmdHeuristic:
     def test_trajectory_appends_iter_one_with_derived_hypothesis(self, books_dataset, tmp_path):
-        """With --trajectory, heuristic fits and appends iter 1 directly — no iter.json hop."""
+        """With --trajectory, heuristic fits and appends iter 1 directly — no iter.json hop.
+
+        The recorded params and hypothesis are pinned to the deterministic heuristic output
+        (derived from its source functions, not asserted as merely non-empty), so a regression
+        that records a stub or padded hypothesis fails here.
+        """
         data_dir = tmp_path / "data"
         books_dataset.save(data_dir)
         trajectory_path = tmp_path / "trajectory.json"
-        args = argparse.Namespace(
-            data=data_dir,
-            trajectory=trajectory_path,
-            seed=0,
-            k=10,
-            max_iterations=10,
-            progress=False,
+        args = _build_parser().parse_args(
+            ["heuristic", "--data", str(data_dir), "--trajectory", str(trajectory_path)],
         )
 
         _cmd_heuristic(args)
@@ -147,17 +157,17 @@ class TestCmdHeuristic:
         trajectory = json.loads(trajectory_path.read_text())
         assert len(trajectory) == 1
         entry = trajectory[0]
+        expected_params, expected_rationale = initial_params(books_dataset)
         assert entry["iteration"] == 1
-        assert set(entry["params"].keys()) == {"factors", "regularization", "iterations", "alpha"}
-        assert set(entry["hypothesis"].keys()) == {"mechanism", "outcome", "falsifiers"}
-        assert all(len(value) > 0 for value in entry["hypothesis"].values())
+        assert entry["params"] == expected_params.to_dict()
+        assert entry["hypothesis"] == initial_hypothesis(expected_params, expected_rationale)
         assert "ndcg" in entry["metrics"]
 
     def test_no_trajectory_prints_to_stdout(self, books_dataset, tmp_path, capsys):
         """Without --trajectory, the inspection form is preserved (params + rationale)."""
         data_dir = tmp_path / "data"
         books_dataset.save(data_dir)
-        args = argparse.Namespace(data=data_dir, trajectory=None, seed=0, k=10)
+        args = _build_parser().parse_args(["heuristic", "--data", str(data_dir)])
 
         _cmd_heuristic(args)
 

@@ -1,9 +1,53 @@
 """Tests for the shared evaluation harness."""
 
+import json
+
 import pytest
 
 from holmes.config import ALSParams
-from holmes.search.harness import PRIMARY_METRIC, evaluate_config, select_best
+from holmes.search.harness import PRIMARY_METRIC, evaluate_config, log_trial, select_best, write_search_output
+
+
+def _trial(score: float, factors: int = 64) -> dict:
+    """A minimal EvalResult-shaped trial for the output-writing tests."""
+    return {
+        "params": {"factors": factors},
+        "seed": 0,
+        "k": 10,
+        "split": "val",
+        "score": score,
+        "metrics": {"ndcg": score, "fit_time_seconds": 1.0, "eval_time_seconds": 0.5},
+    }
+
+
+class TestWriteSearchOutput:
+    """The single exit point for grid/random/bayes, so the results-file schema and console
+    summary cannot drift between strategies (previously three hand-kept copies)."""
+
+    def test_writes_results_file_and_returns_output(self, tmp_path, capsys):
+        trials = [_trial(0.1, factors=64), _trial(0.3, factors=128)]
+        out = tmp_path / "nested" / "grid.json"
+
+        output = write_search_output("grid", trials, out)
+
+        assert output == {"strategy": "grid", "n_trials": 2, "best": trials[1], "trials": trials}
+        assert json.loads(out.read_text()) == output
+        printed = capsys.readouterr().out
+        assert "Wrote 2 grid trials" in printed
+        assert "Best grid config" in printed
+
+    def test_no_out_path_skips_the_write_but_still_reports_best(self, capsys):
+        output = write_search_output("random", [_trial(0.2)], None)
+        assert output["n_trials"] == 1
+        assert "Best random config" in capsys.readouterr().out
+
+
+def test_log_trial_prints_the_shared_progress_line(capsys):
+    log_trial("grid", 3, 72, _trial(0.1234))
+    printed = capsys.readouterr().out
+    assert "[grid 3/72]" in printed
+    assert "val ndcg=0.1234" in printed
+    assert "fit=1.00s" in printed
 
 
 class TestSelectBest:
@@ -16,6 +60,13 @@ class TestSelectBest:
     def test_empty_trials_raises(self):
         with pytest.raises(ValueError, match="No trials"):
             select_best([])
+
+    def test_non_finite_scores_are_rejected(self):
+        """A NaN score must fail loudly: max() over NaN keys silently returns an arbitrary trial
+        (every comparison is False), crowning a garbage winner with no error."""
+        trials = [{"score": float("nan"), "tag": "a"}, {"score": 0.2, "tag": "b"}]
+        with pytest.raises(ValueError, match="non-finite"):
+            select_best(trials)
 
 
 class TestEvaluateConfig:

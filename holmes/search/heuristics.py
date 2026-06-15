@@ -1,23 +1,42 @@
 """Heuristic initial hyperparameters derived from dataset characteristics.
 
-Saves an iteration that would otherwise just confirm the defaults are reasonable. The rules
-encode standard implicit-ALS practice: more factors for larger catalogs, stronger confidence
-scaling (``alpha``) for sparser matrices, and moderate regularization to start.
+Saves an iteration that would otherwise just confirm the defaults are reasonable. Each rule is a
+causal claim grounded in a dataset signal or in the geometry of the search space, and every value
+is clamped into the live :data:`holmes.config.HOLMES_SPACE`, so the heuristic starts in-bounds by
+construction even when ``GRID_SPACE`` is retuned:
+
+- ``factors`` — capacity tracks data volume: the searchable floor at 100k interactions, doubling
+  per decade above it.
+- ``regularization`` — the geometric midpoint of the searchable range: equal log-headroom for the
+  loop's bold multiplicative moves in either direction.
+- ``iterations`` — the midpoint of the sweep range, leaving headroom to raise it if the fit has
+  not converged.
+- ``alpha`` — derived from the dataset's mean stored rating to hit the Hu et al. (2008)
+  confidence operating point ``c = 1 + alpha * r ~= 100`` on an average positive.
 """
 
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING
 
-from holmes.config import GRID_SPACE, ALSParams
+from holmes.config import HOLMES_SPACE, ALSParams
 
 if TYPE_CHECKING:
     from holmes.data.dataset import Dataset
 
-_LARGE_INTERACTIONS = 1_000_000
-_SMALL_INTERACTIONS = 100_000
-_SPARSE_DENSITY = 1e-3
-_HEURISTIC_REGULARIZATION = GRID_SPACE["regularization"][0]
+_FACTORS_ANCHOR_INTERACTIONS = 100_000
+"""Interaction count at which the capacity rule sits exactly at the searchable floor."""
+
+_TARGET_CONFIDENCE = 100.0
+"""Target confidence ``c = 1 + alpha * r`` on an average positive — Hu et al. 2008's operating
+point (their alpha=40 with r ~= 2.5); ``alpha`` is chosen to hit it given the mean stored rating."""
+
+
+def _clamp(name: str, value: float) -> float:
+    """Clamp ``value`` into the HOLMES search bounds for hyperparameter ``name``."""
+    low, high = HOLMES_SPACE[name]
+    return min(max(value, low), high)
 
 
 def initial_params(dataset: Dataset) -> tuple[ALSParams, dict[str, str]]:
@@ -31,33 +50,40 @@ def initial_params(dataset: Dataset) -> tuple[ALSParams, dict[str, str]]:
         explaining why each value was chosen, for the trajectory log.
     """
     n_interactions = dataset.n_interactions
-    density = dataset.density
+    mean_rating = float(dataset.train_ui.data.mean()) if n_interactions else 1.0
 
-    if n_interactions >= _LARGE_INTERACTIONS:
-        factors = 128
-        factors_reason = f"{n_interactions:,} interactions is large; 128 factors to capture structure"
-    elif n_interactions <= _SMALL_INTERACTIONS:
-        factors = 64
-        factors_reason = f"only {n_interactions:,} interactions; 64 factors (the searchable floor) to limit overfitting"
-    else:
-        factors = 64
-        factors_reason = f"{n_interactions:,} interactions is moderate; 64 factors as a balanced start"
+    factors_floor = HOLMES_SPACE["factors"][0]
+    decades_above_anchor = math.log10(max(n_interactions, 1) / _FACTORS_ANCHOR_INTERACTIONS)
+    factors = round(_clamp("factors", factors_floor * 2**decades_above_anchor))
 
-    if density < _SPARSE_DENSITY:
-        alpha = 40.0
-        alpha_reason = f"density {density:.1e} is very sparse; alpha=40 to upweight rare positives"
-    else:
-        alpha = 15.0
-        alpha_reason = f"density {density:.1e} is moderate; alpha=15 as a gentler confidence weight"
+    reg_low, reg_high = HOLMES_SPACE["regularization"]
+    regularization = math.sqrt(reg_low * reg_high)
 
-    params = ALSParams(factors=factors, regularization=_HEURISTIC_REGULARIZATION, iterations=20, alpha=alpha)
+    iter_low, iter_high = HOLMES_SPACE["iterations"]
+    iterations = round((iter_low + iter_high) / 2)
+
+    alpha = _clamp("alpha", (_TARGET_CONFIDENCE - 1.0) / mean_rating)
+
+    params = ALSParams(factors=factors, regularization=regularization, iterations=iterations, alpha=alpha)
     rationale = {
-        "factors": factors_reason,
-        "regularization": (
-            f"{_HEURISTIC_REGULARIZATION} is the lightest in-bounds L2 penalty, leaving headroom to raise it"
+        "factors": (
+            f"{n_interactions:,} interactions; capacity tracks data volume — the searchable floor "
+            f"({factors_floor}) at {_FACTORS_ANCHOR_INTERACTIONS:,} interactions, doubled per decade "
+            f"above it and clamped to the search bounds"
         ),
-        "iterations": "20 sweeps is typically enough for ALS to converge on matrices this size",
-        "alpha": alpha_reason,
+        "regularization": (
+            f"{regularization} is the geometric midpoint of the searchable range [{reg_low}, {reg_high}] — "
+            f"equal log-headroom to move boldly in either direction"
+        ),
+        "iterations": (
+            f"midpoint of the sweep range [{iter_low}, {iter_high}]; enough for ALS to converge on most "
+            f"matrices, with headroom to raise it if train_recon_error stays high"
+        ),
+        "alpha": (
+            f"mean stored rating {mean_rating:.2f}; alpha={alpha:g} targets the Hu et al. confidence "
+            f"operating point c = 1 + alpha*r ~= {_TARGET_CONFIDENCE:g} on an average positive, "
+            f"clamped to the search bounds"
+        ),
     }
     return params, rationale
 
@@ -65,10 +91,10 @@ def initial_params(dataset: Dataset) -> tuple[ALSParams, dict[str, str]]:
 def initial_hypothesis(params: ALSParams, rationale: dict[str, str]) -> dict[str, str]:
     """Repackage the per-HP rationales into a falsifiable iter-1 hypothesis.
 
-    The heuristic rules are themselves causal claims (e.g. "factors=128 because the dataset is
-    large enough to support more capacity without overfitting"). This function lifts them into the
-    skill's ``mechanism / outcome / falsifiers`` shape so iteration 1 can run via the CLI without
-    the LLM having to author the hypothesis by hand.
+    The heuristic rules are themselves causal claims (e.g. "this many interactions support this
+    much capacity without overfitting"). This function lifts them into the skill's
+    ``mechanism / outcome / falsifiers`` shape so iteration 1 can run via the CLI without the
+    LLM having to author the hypothesis by hand.
 
     Args:
         params: The heuristic's chosen hyperparameters.
@@ -78,17 +104,16 @@ def initial_hypothesis(params: ALSParams, rationale: dict[str, str]) -> dict[str
     Returns:
         dict[str, str]: A hypothesis with the three required string fields.
     """
-    values = params.to_dict()
-    mechanism = "; ".join(
-        f"{name}={values[name]} — {rationale[name]}" for name in ("factors", "regularization", "iterations", "alpha")
-    )
+    mechanism = "; ".join(f"{name}={value} — {rationale[name]}" for name, value in params.to_dict().items())
     outcome = (
         "ndcg lands above a trivial baseline but below a well-tuned upper bound; "
         "this is the floor that subsequent iterations must beat."
     )
     falsifiers = (
-        f"If train_recon_error stays high, the factors/iterations rules underspecified the capacity "
-        f"needed to fit this matrix. If train_test_ndcg_gap is large, regularization={params.regularization} "
-        f"is too low for this density. If tail_recall is near zero, the alpha rule failed to surface tail items."
+        f"If train_recon_error stays high, the capacity rule (factors={params.factors}) or the "
+        f"sweep midpoint (iterations={params.iterations}) underspecified the fit. If "
+        f"train_test_ndcg_gap is large, regularization={params.regularization} sits too low in the "
+        f"searchable range for this matrix. If tail_recall is near zero, the confidence target "
+        f"behind alpha={params.alpha:g} over-weights head items."
     )
     return {"mechanism": mechanism, "outcome": outcome, "falsifiers": falsifiers}

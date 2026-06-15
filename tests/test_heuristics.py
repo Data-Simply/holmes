@@ -1,5 +1,7 @@
 """Tests for the heuristic initial-params function."""
 
+import math
+
 import numpy as np
 import pytest
 import scipy.sparse as sp
@@ -8,109 +10,119 @@ from holmes.config import HOLMES_SPACE
 from holmes.data.dataset import Dataset
 from holmes.search.heuristics import initial_hypothesis, initial_params
 
-_ZIPF_EXPONENT = 1.05
 
+def _dataset_with_nnz(nnz: int, rating: float = 1.0) -> Dataset:
+    """A diagonal training matrix with exactly ``nnz`` interactions stored at ``rating``.
 
-def _power_law_indices(rng: np.random.Generator, n: int, max_index: int) -> np.ndarray:
-    """Sample ``n`` indices in ``[0, max_index)`` from a Zipf-style power-law distribution.
-
-    Real Books data has a heavy long tail: a few power readers/blockbusters carry most of the
-    mass and most users/items have very few interactions. Uniform sampling would smear density
-    evenly and give the heuristic a matrix that no realistic Books slice would produce. The
-    exponent is mild (just above 1) so the head doesn't collapse the unique-nnz count too far
-    below the sample count — heavier skew would make the heuristic's branch-threshold tests
-    impossible to hit without dataset sizes far above what a unit-test fixture can build.
+    The heuristic reads only the interaction count and the stored rating values, so a diagonal
+    matrix exercises every rule without materializing a realistic interaction pattern.
     """
-    weights = 1.0 / np.power(np.arange(1, max_index + 1), _ZIPF_EXPONENT)
-    weights /= weights.sum()
-    return rng.choice(max_index, size=n, p=weights)
-
-
-def _dataset_with_interactions(n_users: int, n_items: int, n_interactions: int) -> Dataset:
-    """Build a Dataset whose training matrix has roughly ``n_interactions`` nonzeros, with
-    user/item degree following a Books-realistic power law (heavy head, long tail)."""
-    rng = np.random.default_rng(0)
-    rows = _power_law_indices(rng, n_interactions, n_users)
-    cols = _power_law_indices(rng, n_interactions, n_items)
-    train_ui = sp.csr_matrix((np.ones(n_interactions, dtype=np.float32), (rows, cols)), shape=(n_users, n_items))
-    train_ui.sum_duplicates()
+    data = np.full(nnz, rating, dtype=np.float32)
+    indices = np.arange(nnz, dtype=np.int32)
+    indptr = np.arange(nnz + 1, dtype=np.int32)
+    train_ui = sp.csr_matrix((data, indices, indptr), shape=(nnz, nnz))
     empty = np.array([], dtype=int)
     return Dataset(train_ui, empty, empty, empty, empty)
 
 
-class TestFactorsHeuristic:
+class TestFactorsCapacityRule:
+    def test_sits_at_the_searchable_floor_at_the_anchor_count(self):
+        floor = HOLMES_SPACE["factors"][0]
+        params, _ = initial_params(_dataset_with_nnz(100_000))
+        assert params.factors == floor
+
+    def test_doubles_per_decade_of_interactions(self):
+        floor = HOLMES_SPACE["factors"][0]
+        params, _ = initial_params(_dataset_with_nnz(1_000_000))
+        assert params.factors == 2 * floor
+
+    def test_small_datasets_clamp_to_the_floor(self):
+        params, _ = initial_params(_dataset_with_nnz(1_000))
+        assert params.factors == HOLMES_SPACE["factors"][0]
+
+    def test_clamps_to_the_upper_bound(self, monkeypatch):
+        tightened = {**HOLMES_SPACE, "factors": (64, 100)}
+        monkeypatch.setattr("holmes.search.heuristics.HOLMES_SPACE", tightened)
+        params, _ = initial_params(_dataset_with_nnz(1_000_000))  # raw rule says 128
+        assert params.factors == 100
+
+
+class TestAlphaConfidenceRule:
     @pytest.mark.parametrize(
-        ("n_users", "n_items", "n_samples", "expected_factors"),
+        ("rating", "expected_alpha"),
         [
-            # n_samples > the heuristic's _LARGE_INTERACTIONS threshold AFTER power-law dedup
-            # collapses ~half of the samples — needs to exceed ~2.1x the threshold raw.
-            (50_000, 20_000, 3_000_000, 128),  # large -> more factors
-            (5_000, 2_000, 50_000, 64),  # small -> the searchable floor
-            (5_000, 2_000, 300_000, 64),  # moderate -> balanced
+            (4.0, 24.75),  # c = 1 + 24.75 * 4.0 = 100, the Hu et al. operating point
+            (5.0, 19.8),  # c = 1 + 19.8 * 5.0 = 100
         ],
     )
-    def test_factors_scale_with_interaction_count(self, n_users, n_items, n_samples, expected_factors):
-        dataset = _dataset_with_interactions(n_users, n_items, n_samples)
-        params, _ = initial_params(dataset)
-        assert params.factors == expected_factors
+    def test_targets_the_confidence_operating_point(self, rating, expected_alpha):
+        params, _ = initial_params(_dataset_with_nnz(100_000, rating=rating))
+        assert params.alpha == pytest.approx(expected_alpha)
+
+    def test_clamps_to_the_search_bounds(self):
+        # A unit-rating matrix implies alpha = 99, far above the hull ceiling.
+        params, _ = initial_params(_dataset_with_nnz(100_000, rating=1.0))
+        assert params.alpha == HOLMES_SPACE["alpha"][1]
 
 
-class TestAlphaHeuristic:
-    @pytest.mark.parametrize(
-        ("n_users", "n_items", "n_samples", "expected_alpha"),
-        [
-            (50_000, 50_000, 200_000, 40.0),  # density well below 1e-3 → sparse branch
-            (500, 500, 200_000, 15.0),  # density well above 1e-3 → dense branch
-        ],
-    )
-    def test_alpha_pins_to_density_branch(self, n_users, n_items, n_samples, expected_alpha):
-        dataset = _dataset_with_interactions(n_users, n_items, n_samples)
-        params, _ = initial_params(dataset)
-        assert params.alpha == expected_alpha
+class TestMidpointRules:
+    def test_regularization_has_equal_log_headroom_in_both_directions(self):
+        """The starting L2 must leave the same multiplicative room to move up or down, so the
+        loop's bold 10x moves are possible in either direction from iteration 2."""
+        low, high = HOLMES_SPACE["regularization"]
+        params, _ = initial_params(_dataset_with_nnz(100_000))
+        assert math.isclose(params.regularization / low, high / params.regularization)
+
+    def test_iterations_is_the_midpoint_of_the_sweep_range(self):
+        low, high = HOLMES_SPACE["iterations"]
+        params, _ = initial_params(_dataset_with_nnz(100_000))
+        assert abs((high - params.iterations) - (params.iterations - low)) <= 1  # integer rounding
 
 
-@pytest.mark.parametrize(
-    ("n_users", "n_items", "n_samples"),
-    [
-        (50_000, 20_000, 3_000_000),  # large branch (post-dedup nnz > 1M)
-        (5_000, 2_000, 50_000),  # small branch
-        (5_000, 2_000, 300_000),  # moderate branch
-        (50_000, 50_000, 200_000),  # sparse branch (alpha=40)
-        (500, 500, 200_000),  # dense branch (alpha=15)
-    ],
-)
-def test_heuristic_params_fall_within_holmes_space(n_users, n_items, n_samples):
+@pytest.mark.parametrize("nnz", [1_000, 100_000, 1_000_000])
+def test_heuristic_params_fall_within_holmes_space(nnz):
     """Iter-1 starts from the heuristic, so its params must be inside the search space the rest of
     the loop optimizes over — otherwise the heuristic seeds the trajectory at a point no subsequent
-    iteration is allowed to revisit, and (worse) the per-HP falsifier "this value is too low" can't
-    be acted on because pushing it lower is out of bounds."""
-    dataset = _dataset_with_interactions(n_users, n_items, n_samples)
-    params, _ = initial_params(dataset)
+    iteration is allowed to revisit."""
+    params, _ = initial_params(_dataset_with_nnz(nnz, rating=4.5))
     values = params.to_dict()
     for name, (low, high) in HOLMES_SPACE.items():
         assert low <= values[name] <= high, f"heuristic {name}={values[name]} is outside HOLMES_SPACE [{low}, {high}]"
 
 
-def test_rationale_grounds_each_hyperparameter_in_dataset_signals():
-    """Each rationale should reference the dataset signal it depends on (n_interactions, density)
-    so the LLM can read the trajectory and see WHY the heuristic picked that value, not just that
-    it did. Empty or generic strings would defeat the point."""
-    n_users, n_items, n_interactions = 5_000, 2_000, 300_000
-    dataset = _dataset_with_interactions(n_users, n_items, n_interactions)
+def test_heuristic_stays_in_bounds_when_the_space_is_retuned(monkeypatch):
+    """In-bounds must hold by construction (clamping against the live HOLMES_SPACE), not because
+    today's literals happen to fall inside today's grid — a GRID_SPACE retune must not break the
+    HOLMES loop's mandated entry point."""
+    tightened = {
+        "factors": (128, 256),
+        "regularization": (0.5, 1.0),
+        "iterations": (25, 30),
+        "alpha": (5.0, 10.0),
+    }
+    monkeypatch.setattr("holmes.search.heuristics.HOLMES_SPACE", tightened)
+    params, _ = initial_params(_dataset_with_nnz(50_000, rating=4.0))
+    values = params.to_dict()
+    for name, (low, high) in tightened.items():
+        assert low <= values[name] <= high, f"heuristic {name}={values[name]} escaped tightened [{low}, {high}]"
+
+
+def test_rationale_grounds_each_hyperparameter_in_its_signal():
+    """Each rationale should reference the signal it depends on (interaction count, mean rating,
+    the searchable range) so the LLM can read the trajectory and see WHY the heuristic picked
+    that value, not just that it did."""
+    dataset = _dataset_with_nnz(300_000, rating=4.0)
     params, rationale = initial_params(dataset)
     assert set(rationale.keys()) == {"factors", "regularization", "iterations", "alpha"}
-    # factors and alpha branch on dataset signals (n_interactions, density); the rationale must
-    # surface those signals, not just state the picked value.
     assert f"{dataset.n_interactions:,}" in rationale["factors"]
-    assert f"{dataset.density:.1e}" in rationale["alpha"]
-    # regularization is anchored to GRID_SPACE's lower bound — the rationale must name the value.
+    assert "4.00" in rationale["alpha"]  # the mean stored rating driving the confidence target
     assert str(params.regularization) in rationale["regularization"]
 
 
 class TestInitialHypothesis:
     def test_mechanism_grounds_in_per_hyperparameter_rationales(self):
         """Mechanism should reference each HP's rationale so the iter-1 hypothesis is concrete."""
-        dataset = _dataset_with_interactions(5_000, 2_000, 300_000)
+        dataset = _dataset_with_nnz(300_000, rating=4.0)
         params, rationale = initial_params(dataset)
         mechanism = initial_hypothesis(params, rationale)["mechanism"]
         for hp_rationale in rationale.values():
@@ -119,7 +131,7 @@ class TestInitialHypothesis:
     def test_falsifiers_name_diagnostics_that_would_invalidate_each_rule(self):
         """Falsifiers must name the diagnostic metrics that would refute the heuristic, so the LLM
         knows what observation to check after the fit."""
-        dataset = _dataset_with_interactions(5_000, 2_000, 300_000)
+        dataset = _dataset_with_nnz(300_000, rating=4.0)
         params, rationale = initial_params(dataset)
         falsifiers = initial_hypothesis(params, rationale)["falsifiers"]
         for metric in ("train_recon_error", "train_test_ndcg_gap", "tail_recall"):

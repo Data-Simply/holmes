@@ -153,12 +153,6 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Hypothesis: what observation would say the causal model is wrong.",
     )
-    holmes_iter.add_argument(
-        "--max-iterations",
-        type=int,
-        default=MAX_ITERATIONS,
-        help=f"Hard cap on total trajectory length (default {MAX_ITERATIONS}, matching the grid and bayes budgets).",
-    )
     _add_progress_arg(holmes_iter)
 
     heuristic = sub.add_parser(
@@ -175,12 +169,6 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     _add_seed_arg(heuristic)
     heuristic.add_argument("--k", type=int, default=TOP_K, help="Ranking cut-off (used when --trajectory is set).")
-    heuristic.add_argument(
-        "--max-iterations",
-        type=int,
-        default=MAX_ITERATIONS,
-        help=f"Hard cap on total trajectory length (default {MAX_ITERATIONS}).",
-    )
     _add_progress_arg(heuristic)
 
     sub.add_parser(
@@ -325,7 +313,6 @@ def _cmd_holmes_iter(args: argparse.Namespace) -> None:
         args.trajectory,
         seed=args.seed,
         k=args.k,
-        max_iterations=args.max_iterations,
         show_progress=args.progress,
     )
 
@@ -341,7 +328,6 @@ def _cmd_heuristic(args: argparse.Namespace) -> None:
             args.trajectory,
             seed=args.seed,
             k=args.k,
-            max_iterations=args.max_iterations,
             show_progress=args.progress,
         )
         return
@@ -381,7 +367,11 @@ def _cmd_eval(args: argparse.Namespace) -> None:
     except json.JSONDecodeError as exc:
         msg = f"--params must be a JSON file or JSON string; could not parse {raw!r}: {exc}"
         raise SystemExit(msg) from exc
-    params = ALSParams.from_dict(spec)
+    try:
+        params = ALSParams.from_dict(spec)
+    except ValueError as exc:
+        msg = f"--params is not a valid ALS hyperparameter mapping: {exc}"
+        raise SystemExit(msg) from exc
     result = evaluate_config(
         params,
         Dataset.load(args.data),

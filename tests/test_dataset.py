@@ -56,6 +56,16 @@ class TestDatasetRoundTrip:
         assert meta["n_interactions"] == _TRAIN_INTERACTIONS
 
 
+class TestItemSelfInformation:
+    def test_matches_negative_log2_of_popularity_share(self, books_dataset):
+        """Cached on Dataset like the other matrix-wide arrays (item_popularity,
+        popularity_percentile), so diagnostics don't rebuild two O(n_items) arrays per call.
+        Zero-popularity items are floored at a count of 1 so the log stays finite."""
+        expected = -np.log2(np.maximum(books_dataset.item_popularity, 1) / books_dataset.n_users)
+        np.testing.assert_allclose(books_dataset.item_self_information, expected)
+        assert books_dataset.item_self_information.shape == (_N_ITEMS,)
+
+
 class TestPopularityPercentile:
     def test_tie_aware_and_monotonic(self, books_dataset):
         """Equally-popular books share a percentile; the most popular gets the maximum."""

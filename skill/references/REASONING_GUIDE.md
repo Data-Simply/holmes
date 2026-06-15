@@ -34,9 +34,9 @@ shape *how* that capacity is spent (generalization vs. memorization, head vs. ta
 **Signals:** low `ndcg`, high `train_recon_error`, small `train_test_ndcg_gap`.
 **Hypothesis:** the factorization cannot represent the structure — too few factors or too few
 iterations; or regularization is suppressing the fit.
-**Move:** double `factors` (e.g. 64→128→256, up to the upper bound from `holmes ranges`). If
-`train_recon_error` stays high, the solve isn't converging — raise `iterations` (15→30). One
-lever at a time.
+**Move:** double `factors` (one doubling per iteration, up to the upper bound from
+`holmes ranges`). If `train_recon_error` stays high, the solve isn't converging — raise
+`iterations` toward its upper bound. One lever at a time.
 
 ### 2. Overfitting / memorization
 
@@ -44,7 +44,8 @@ lever at a time.
 `mean_factor_norm`.
 **Hypothesis:** the model memorizes training history instead of generalizing — capacity too
 high relative to regularization.
-**Move:** raise `regularization` 10× (0.1→1.0). If the gap persists, halve `factors`.
+**Move:** raise `regularization` 10× (one decade per iteration, capped at the upper bound from
+`holmes ranges`). If the gap persists, halve `factors`.
 
 ### 3. Popularity bias
 
@@ -52,17 +53,18 @@ high relative to regularization.
 `novelty`, low `tail_recall`.
 **Hypothesis:** confidence weighting concentrates the recommender on head items — `alpha` is
 over-weighting heavily-interacted (popular) entries.
-**Move:** lower `alpha` 4× (40→10). If coverage is still low, raise `factors` to give niche
-structure room. Watch that `ndcg` doesn't collapse — the tradeoff is the point.
+**Move:** lower `alpha` ~4× (toward the lower bound from `holmes ranges`). If coverage is still
+low, raise `factors` to give niche structure room. Watch that `ndcg` doesn't collapse — the
+tradeoff is the point.
 
 ### 4. Not converged
 
 **Signals:** high `train_recon_error` that **falls** when `iterations` is raised; possibly
 seed-sensitive (`ndcg` varies when you re-run with a different `--seed`).
 **Hypothesis:** the alternating solve hasn't reached a fixed point within the iteration budget.
-**Move:** raise `iterations` (15→30, the upper bound). Once `train_recon_error` plateaus, stop
-adding sweeps; if it's still falling at 30, the budget itself is the bottleneck — flag it
-rather than try to escape the bound.
+**Move:** raise `iterations` to the upper bound from `holmes ranges`. Once `train_recon_error`
+plateaus, stop adding sweeps; if it's still falling at the bound, the sweep budget itself is
+the bottleneck — flag it rather than try to escape the bound.
 
 ### 5. Over-regularized collapse
 
@@ -70,7 +72,9 @@ rather than try to escape the bound.
 low `catalog_coverage`.
 **Hypothesis:** the L2 penalty (or too-low `alpha`) has shrunk embeddings toward zero, so all
 users/items look alike.
-**Move:** lower `regularization` 10× (10.0→1.0→0.1). If still flat, raise `alpha` (1→10).
+**Move:** lower `regularization` 10× per iteration toward the lower bound from `holmes ranges`.
+If still flat, raise `alpha` toward its upper bound. All moves stay inside the bounds —
+`holmes-iter` rejects out-of-bounds params.
 
 ### 6. Exploding factors / instability
 

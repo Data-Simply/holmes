@@ -5,11 +5,9 @@ not tested here, consistent with treating I/O as an external dependency.
 """
 
 import polars as pl
-import pytest
 
 from holmes.data.preprocess import (
     _REVIEW_COLUMNS,
-    AMAZON_CATEGORIES,
     _assign_indices_and_split,
     _build_review_cache,
     _deduplicate_interactions,
@@ -25,6 +23,31 @@ def _reviews(rows: list[dict]) -> pl.LazyFrame:
     ).lazy()
 
 
+def _tied_timestamp_frame(tied_order: list[str]) -> pl.DataFrame:
+    """Four cust_a interactions whose two latest timestamps tie; ``tied_order`` sets row order."""
+    return pl.DataFrame(
+        {
+            "user_id": ["cust_a"] * 4,
+            "parent_asin": ["B10", "B11", *tied_order],
+            "timestamp": [1, 2, 3, 3],  # the last two interactions tie at the latest timestamp
+            "rating": [5.0, 5.0, 5.0, 5.0],
+        },
+    )
+
+
+def _split_maps(dataset):
+    """The (test, val) splits as user->item dicts, for order-independence comparisons."""
+    test = dict(zip(dataset.test_users.tolist(), dataset.test_items.tolist(), strict=True))
+    val = dict(zip(dataset.val_users.tolist(), dataset.val_items.tolist(), strict=True))
+    return test, val
+
+
+def _fail_if_called(*args, **kwargs):
+    """Stand-in for a function the test asserts is never invoked."""
+    msg = "build_dataset rebuilt the cache despite a present one"
+    raise AssertionError(msg)
+
+
 class TestDeduplicateInteractions:
     def test_collapses_repeats_keeping_latest_timestamp(self):
         reviews = _reviews(
@@ -38,6 +61,37 @@ class TestDeduplicateInteractions:
         assert out.height == 2
         latest = out.filter(pl.col("parent_asin") == "B001")["timestamp"].item()
         assert latest == 30
+
+    def test_downgraded_rereview_keeps_the_latest_reviews_rating(self):
+        """The kept row must be one real review — never the newest timestamp paired with an
+        older review's higher rating, which would inflate confidence (c_ui = 1 + alpha * r)."""
+        reviews = _reviews(
+            [
+                {"user_id": "cust_a", "parent_asin": "B001", "rating": 5.0, "timestamp": 10},
+                {"user_id": "cust_a", "parent_asin": "B001", "rating": 4.0, "timestamp": 20},  # later downgrade
+            ],
+        )
+        out = _deduplicate_interactions(reviews, min_rating=4.0).collect()
+        assert out.to_dicts() == [{"user_id": "cust_a", "parent_asin": "B001", "timestamp": 20, "rating": 4.0}]
+
+    def test_tied_timestamps_keep_the_higher_rating_regardless_of_row_order(self):
+        """Two reviews tied on timestamp must dedupe identically for either input order — the
+        rating tiebreaker makes the kept row value-determined, not row-order-determined."""
+        forward = _reviews(
+            [
+                {"user_id": "cust_a", "parent_asin": "B001", "rating": 4.0, "timestamp": 10},
+                {"user_id": "cust_a", "parent_asin": "B001", "rating": 5.0, "timestamp": 10},
+            ],
+        )
+        backward = _reviews(
+            [
+                {"user_id": "cust_a", "parent_asin": "B001", "rating": 5.0, "timestamp": 10},
+                {"user_id": "cust_a", "parent_asin": "B001", "rating": 4.0, "timestamp": 10},
+            ],
+        )
+        expected = [{"user_id": "cust_a", "parent_asin": "B001", "timestamp": 10, "rating": 5.0}]
+        assert _deduplicate_interactions(forward, min_rating=4.0).collect().to_dicts() == expected
+        assert _deduplicate_interactions(backward, min_rating=4.0).collect().to_dicts() == expected
 
     def test_drops_low_rated_null_and_empty_rows(self):
         reviews = _reviews(
@@ -153,25 +207,9 @@ class TestAssignIndicesAndSplit:
         order. Here the two interactions tied at the latest timestamp are presented in OPPOSITE
         orders; the split must be identical either way.
         """
-
-        def frame(tied_order: list[str]) -> pl.DataFrame:
-            return pl.DataFrame(
-                {
-                    "user_id": ["cust_a", "cust_a", *(["cust_a"] * 2)],
-                    "parent_asin": ["B10", "B11", *tied_order],
-                    "timestamp": [1, 2, 3, 3],  # B12 and B13 tie at the latest timestamp
-                    "rating": [5.0, 5.0, 5.0, 5.0],
-                },
-            )
-
-        def split_maps(dataset):
-            test = dict(zip(dataset.test_users.tolist(), dataset.test_items.tolist(), strict=True))
-            val = dict(zip(dataset.val_users.tolist(), dataset.val_items.tolist(), strict=True))
-            return test, val
-
-        forward = _assign_indices_and_split(frame(["B12", "B13"]))
-        reversed_ties = _assign_indices_and_split(frame(["B13", "B12"]))
-        assert split_maps(forward) == split_maps(reversed_ties)
+        forward = _assign_indices_and_split(_tied_timestamp_frame(["B12", "B13"]))
+        reversed_ties = _assign_indices_and_split(_tied_timestamp_frame(["B13", "B12"]))
+        assert _split_maps(forward) == _split_maps(reversed_ties)
         assert (forward.train_ui != reversed_ties.train_ui).nnz == 0
 
 
@@ -195,6 +233,33 @@ class TestReviewCache:
             {"user_id": "cust_b", "parent_asin": "B002", "rating": 4.0, "timestamp": 20},
         ]
 
+    def test_build_dataset_pins_the_full_pipeline_output(self, tmp_path):
+        """Characterization of the whole preprocess pipeline on a tiny cache: exact indices,
+        matrix values, and splits. Internal refactors (e.g. when ids are encoded to integers)
+        must not change any of it."""
+        reviews = pl.DataFrame(
+            {
+                "user_id": ["cust_a", "cust_a", "cust_a", "cust_b", "cust_b", "cust_b"],
+                "parent_asin": ["B10", "B11", "B12", "B20", "B21", "B22"],
+                "rating": [5.0, 4.0, 5.0, 5.0, 4.0, 5.0],
+                "timestamp": [1, 2, 3, 1, 2, 3],
+            },
+        )
+        reviews.write_parquet(tmp_path / "Books.parquet")
+
+        dataset = build_dataset(category="Books", cache_dir=tmp_path, min_user=1, min_item=1)
+
+        # Ids rank alphabetically: cust_a -> 0, cust_b -> 1; B10..B22 -> 0..5. Per user the last
+        # interaction is test, the second-last val, the rest train (at their raw ratings).
+        assert dataset.train_ui.toarray().tolist() == [
+            [5.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 5.0, 0.0, 0.0],
+        ]
+        assert dataset.val_users.tolist() == [0, 1]
+        assert dataset.val_items.tolist() == [1, 4]
+        assert dataset.test_users.tolist() == [0, 1]
+        assert dataset.test_items.tolist() == [2, 5]
+
     def test_build_dataset_reuses_existing_cache_without_rereading_source(self, tmp_path, monkeypatch):
         """A present cache is scanned directly; the cache builder is never invoked."""
         reviews = pl.DataFrame(
@@ -207,11 +272,7 @@ class TestReviewCache:
         )
         reviews.write_parquet(tmp_path / "Books.parquet")
 
-        def boom(*args, **kwargs):
-            msg = "build_dataset rebuilt the cache despite a present one"
-            raise AssertionError(msg)
-
-        monkeypatch.setattr("holmes.data.preprocess._build_review_cache", boom)
+        monkeypatch.setattr("holmes.data.preprocess._build_review_cache", _fail_if_called)
         dataset = build_dataset(category="Books", cache_dir=tmp_path, min_user=1, min_item=1)
         assert dataset.n_users == 2
         assert dataset.n_items == 6

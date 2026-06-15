@@ -1,6 +1,8 @@
 """Tests for the grid, Bayesian, and HOLMES search drivers."""
 
 import dataclasses
+import functools
+import inspect
 import json
 from pathlib import Path
 
@@ -11,6 +13,7 @@ from holmes.config import (
     GRID_SPACE,
     HOLMES_SPACE,
     MAX_ITERATIONS,
+    PARAM_SCALES,
     RANDOM_SPACE,
     ALSParams,
     _grid_hull,
@@ -22,6 +25,20 @@ from holmes.search.holmes import annotate_iteration, load_trajectory, run_iterat
 from holmes.search.random_search import run_random
 
 SEED = 0
+
+
+def _stub_eval(calls: list[str], params: ALSParams, dataset, *, seed=0, k=10, split=None, show_progress=False):
+    """evaluate_config stand-in that records the requested split without fitting a model."""
+    calls.append(split)
+    return {
+        "params": params.to_dict(),
+        "seed": seed,
+        "k": k,
+        "split": split,
+        "score": 0.5,
+        "metrics": {"ndcg": 0.5, "fit_time_seconds": 0.0, "eval_time_seconds": 0.0},
+    }
+
 
 # The single source of truth for which hyperparameters every strategy tunes; derived from ALSParams
 # so adding a field can't silently leave a space behind.
@@ -48,6 +65,51 @@ class TestComparabilityInvariants:
         # random/bayes read MAX_ITERATIONS directly and HOLMES caps at it; grid must enumerate the
         # same count or the fixed-budget comparison is off by construction.
         assert len(_grid_configs()) == MAX_ITERATIONS
+
+    def test_spaces_are_distinct_objects(self):
+        # The three spaces are deliberately distinct objects so an in-test monkeypatch on one
+        # cannot silently rebind the others' search regions (see config.py and CLAUDE.md).
+        assert RANDOM_SPACE is not BAYES_SPACE
+        assert RANDOM_SPACE is not HOLMES_SPACE
+        assert BAYES_SPACE is not HOLMES_SPACE
+
+    def test_sampling_scales_cover_exactly_the_als_hyperparameters(self):
+        # Random and bayes both read PARAM_SCALES, so they sample the same measure over the hull
+        # by construction; this locks the table itself to the hyperparameter set.
+        assert set(PARAM_SCALES) == _ALS_HYPERPARAMETERS
+        assert set(PARAM_SCALES.values()) <= {"log", "linear"}
+
+    def test_holmes_budget_is_not_overridable_per_call(self):
+        # CLAUDE.md: the budget is the single MAX_ITERATIONS with no per-call override. HOLMES is
+        # the only strategy whose driver runs one iteration at a time, so it is the only one where
+        # an override parameter could creep in.
+        assert "max_iterations" not in inspect.signature(run_iteration).parameters
+
+    def test_every_strategy_scores_the_validation_split(
+        self,
+        books_dataset,
+        trajectory_path,
+        in_bounds_params,
+        monkeypatch,
+    ):
+        """All four strategies must request the same held-out split from the shared harness —
+        one strategy drifting to split="test" would optimize against the reporting split
+        (test-set leakage) with nothing else failing. "val" is the convention being locked; it
+        has no derivable source, which is exactly why CLAUDE.md requires a guardrail test."""
+        calls: list[str] = []
+        stub = functools.partial(_stub_eval, calls)
+        for module in ("grid", "random_search", "bayes", "holmes"):
+            monkeypatch.setattr(f"holmes.search.{module}.evaluate_config", stub)
+        monkeypatch.setattr("holmes.search.random_search.MAX_ITERATIONS", 3)
+        monkeypatch.setattr("holmes.search.bayes.MAX_ITERATIONS", 3)
+
+        run_grid(books_dataset, seed=SEED, k=10)
+        run_random(books_dataset, seed=SEED, search_seed=0, k=10)
+        run_bayes(books_dataset, seed=SEED, sampler_seed=0, k=10)
+        run_iteration(books_dataset, {"params": in_bounds_params}, trajectory_path, seed=SEED, k=10)
+
+        assert len(calls) == len(_grid_configs()) + 3 + 3 + 1
+        assert set(calls) == {"val"}
 
 
 @pytest.fixture
@@ -156,6 +218,15 @@ class TestHolmesIteration:
         assert entry["validation_status"] is None
         assert entry["interpretation"] is None
 
+    def test_iteration_records_the_ranking_cutoff_and_split(self, books_dataset, trajectory_path, in_bounds_params):
+        """k and split are persisted per entry (as grid/random/bayes trials already do), so a
+        cut-off or split drift between iterations is visible in the trajectory rather than
+        silently inflating scores."""
+        spec = {"params": in_bounds_params, "hypothesis": {}}
+        entry = run_iteration(books_dataset, spec, trajectory_path, seed=SEED, k=10)
+        assert entry["k"] == 10
+        assert entry["split"] == "val"
+
     def test_iterations_accumulate_in_trajectory(self, books_dataset, trajectory_path, in_bounds_params):
         spec = {"params": in_bounds_params, "hypothesis": {}}
         run_iteration(books_dataset, spec, trajectory_path, seed=SEED, k=10)
@@ -212,6 +283,25 @@ def test_load_trajectory_missing_file_returns_empty(tmp_path):
     assert load_trajectory(tmp_path / "absent.json") == []
 
 
+def test_load_trajectory_corrupted_file_raises_naming_the_path(tmp_path):
+    """A truncated/corrupt trajectory must surface a descriptive error, not a bare JSONDecodeError
+    traceback that leaves the agent guessing which file broke."""
+    path = tmp_path / "trajectory.json"
+    path.write_text('[{"iteration": 1, "par')  # a write cut short
+    with pytest.raises(ValueError, match=r"trajectory\.json"):
+        load_trajectory(path)
+
+
+def test_trajectory_writes_are_atomic_and_leave_no_temp_file(books_dataset, trajectory_path, in_bounds_params):
+    """Persistence goes through a sibling temp file + os.replace, so a kill mid-write can never
+    truncate the trajectory; after a successful write the temp file must be gone."""
+    spec = {"params": in_bounds_params, "hypothesis": {}}
+    run_iteration(books_dataset, spec, trajectory_path, seed=SEED, k=10)
+    leftovers = [p for p in trajectory_path.parent.iterdir() if p.name != trajectory_path.name]
+    assert leftovers == []
+    assert len(load_trajectory(trajectory_path)) == 1
+
+
 def test_run_iteration_prints_entry_as_json(books_dataset, trajectory_path, in_bounds_params, capsys):
     """The appended entry is echoed to stdout as JSON so the agent reads it without a second command."""
     spec = {"params": in_bounds_params, "hypothesis": {}}
@@ -221,20 +311,17 @@ def test_run_iteration_prints_entry_as_json(books_dataset, trajectory_path, in_b
 
 
 class TestMaxIterationsCap:
-    def test_at_cap_refuses_to_run(self, books_dataset, trajectory_path, in_bounds_params):
+    def test_at_cap_refuses_to_run(self, books_dataset, trajectory_path, in_bounds_params, monkeypatch):
+        # The budget is the shared module-level MAX_ITERATIONS (no per-call override); shrink it
+        # the same way the random/bayes budget tests do.
+        monkeypatch.setattr(holmes_module, "MAX_ITERATIONS", 2)
         spec = {"params": in_bounds_params, "hypothesis": {}}
         # Fill the trajectory to the cap.
-        run_iteration(books_dataset, spec, trajectory_path, seed=SEED, k=10, max_iterations=2)
-        run_iteration(books_dataset, spec, trajectory_path, seed=SEED, k=10, max_iterations=2)
+        run_iteration(books_dataset, spec, trajectory_path, seed=SEED, k=10)
+        run_iteration(books_dataset, spec, trajectory_path, seed=SEED, k=10)
         # Third call must refuse rather than burn another fit.
         with pytest.raises(RuntimeError, match="Budget exhausted"):
-            run_iteration(books_dataset, spec, trajectory_path, seed=SEED, k=10, max_iterations=2)
-
-    def test_below_cap_proceeds(self, books_dataset, trajectory_path, in_bounds_params):
-        """Sanity: a high cap doesn't change behavior."""
-        spec = {"params": in_bounds_params, "hypothesis": {}}
-        entry = run_iteration(books_dataset, spec, trajectory_path, seed=SEED, k=10, max_iterations=10)
-        assert entry["iteration"] == 1
+            run_iteration(books_dataset, spec, trajectory_path, seed=SEED, k=10)
 
 
 @pytest.fixture

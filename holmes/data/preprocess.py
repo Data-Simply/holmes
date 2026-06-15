@@ -142,7 +142,10 @@ def _deduplicate_interactions(reviews: pl.LazyFrame, min_rating: float) -> pl.La
         min_rating: Minimum star rating for a review to count as a positive interaction.
 
     Returns:
-        pl.LazyFrame: One row per ``(user_id, parent_asin)`` with the most recent timestamp.
+        pl.LazyFrame: One row per ``(user_id, parent_asin)``: the most recent review's timestamp
+        AND rating (ties on timestamp keep the higher rating). The kept row is one real review —
+        aggregating the columns independently could pair the newest timestamp with an older
+        review's higher rating, inflating its confidence weight ``c_ui = 1 + alpha * r``.
     """
     return (
         reviews.select(_USER, _ITEM, _RATING, _TIME)
@@ -151,7 +154,8 @@ def _deduplicate_interactions(reviews: pl.LazyFrame, min_rating: float) -> pl.La
             pl.col(_USER).is_not_null() & pl.col(_ITEM).is_not_null() & (pl.col(_USER) != "") & (pl.col(_ITEM) != ""),
         )
         .group_by(_USER, _ITEM)
-        .agg(pl.col(_TIME).max(), pl.col(_RATING).max())
+        # sort_by is value-based, so the kept row is deterministic regardless of group row order.
+        .agg(pl.col(_TIME, _RATING).sort_by(_TIME, _RATING).last())
     )
 
 
@@ -191,8 +195,9 @@ def _assign_indices_and_split(interactions: pl.DataFrame) -> Dataset:
     Returns:
         Dataset: Training matrix plus validation and test held-out positives.
     """
-    # Assign contiguous integer indices, then drop the wide string id columns immediately so every
-    # downstream copy (sort, windows, filters, joins) carries only narrow integer columns.
+    # Assign contiguous integer indices: k-core filtering leaves gaps in the pre-filter id codes
+    # (and the unit tests pass raw string ids), so re-rank either way. Dense rank is monotone, so
+    # the ordering — and thus the final index assignment — matches the original id sort order.
     indexed = interactions.with_columns(
         (pl.col(_USER).rank("dense") - 1).cast(pl.Int32).alias(_USER_IDX),
         (pl.col(_ITEM).rank("dense") - 1).cast(pl.Int32).alias(_ITEM_IDX),
@@ -293,6 +298,15 @@ def build_dataset(
         reviews = reviews.head(max_interactions)
     interactions = _deduplicate_interactions(reviews, min_rating).collect(engine="streaming")
     print(f"  {interactions.height:,} unique interactions after rating filter and dedup")
+
+    # Replace the wide string id columns with dense Int32 codes before the iterative k-core:
+    # each round window-aggregates over both keys, and re-hashing tens of millions of strings
+    # per round dominates preprocessing on real categories. Dense rank preserves the string
+    # sort order, so the final index assignment downstream is unchanged.
+    interactions = interactions.with_columns(
+        (pl.col(_USER).rank("dense") - 1).cast(pl.Int32),
+        (pl.col(_ITEM).rank("dense") - 1).cast(pl.Int32),
+    )
 
     interactions = _k_core_filter(interactions, min_user, min_item)
     if interactions.height == 0:
