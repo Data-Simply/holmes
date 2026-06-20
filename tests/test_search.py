@@ -131,9 +131,10 @@ class TestComparabilityInvariants:
         stub = functools.partial(_stub_eval, calls)
         for module in ("grid", "random_search", "bayes", "rule_engine", "holmes"):
             monkeypatch.setattr(f"holmes.search.{module}.evaluate_config", stub)
-        monkeypatch.setattr("holmes.search.random_search.MAX_ITERATIONS", 3)
-        monkeypatch.setattr("holmes.search.bayes.MAX_ITERATIONS", 3)
-        monkeypatch.setattr("holmes.search.rule_engine.MAX_ITERATIONS", 3)
+        budget = 3
+        monkeypatch.setattr("holmes.search.random_search.MAX_ITERATIONS", budget)
+        monkeypatch.setattr("holmes.search.bayes.MAX_ITERATIONS", budget)
+        monkeypatch.setattr("holmes.search.rule_engine.MAX_ITERATIONS", budget)
 
         run_grid(books_dataset, seed=SEED, k=10)
         run_random(books_dataset, seed=SEED, search_seed=0, k=10)
@@ -141,7 +142,8 @@ class TestComparabilityInvariants:
         run_rule_engine(books_dataset, seed=SEED, k=10)
         run_iteration(books_dataset, {"params": in_bounds_params}, trajectory_path, seed=SEED, k=10)
 
-        assert len(calls) == len(_grid_configs()) + 3 + 3 + 3 + 1
+        # grid enumerates its full space; random, bayes, and rule each run `budget`; holmes runs one.
+        assert len(calls) == len(_grid_configs()) + 3 * budget + 1
         assert set(calls) == {"val"}
 
 
