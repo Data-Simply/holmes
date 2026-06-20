@@ -82,7 +82,12 @@ uv run holmes random --data data/processed/Books --seed 0 --search-seed 0
 #     search trajectory). Like grid and random, it always runs the shared fit budget.
 uv run holmes bayes --data data/processed/Books --seed 0 --sampler-seed 0
 
-# 2d. The agentic HOLMES loop is driven by Claude Code via skill/SKILL.md. Each round runs
+# 2d. Rule-engine ablation: the reasoning guide's diagnostic patterns as deterministic code, with
+#     no LLM and no falsification protocol. Runs the same fixed budget; the HOLMES-vs-rule gap
+#     isolates whether HOLMES's win is the discipline or just the injected guide.
+uv run holmes rule --data data/processed/Books --seed 0
+
+# 2e. The agentic HOLMES loop is driven by Claude Code via skill/SKILL.md. Each round runs
 #     ONE iteration, appending diagnostics to an append-only trajectory log:
 uv run holmes heuristic --data data/processed/Books          # suggested starting params
 uv run holmes holmes-iter --data data/processed/Books \
@@ -126,8 +131,9 @@ holmes/
     grid.py            # grid search
     random_search.py   # random search
     bayes.py           # Optuna Bayesian optimization
+    rule_engine.py     # deterministic rule-based ablation (the guide's patterns as code)
     holmes.py          # run ONE HOLMES iteration, append to trajectory
-  cli.py               # `holmes preprocess|grid|random|bayes|holmes-iter|heuristic|eval`
+  cli.py               # `holmes preprocess|grid|random|bayes|rule|holmes-iter|heuristic|eval`
 skill/                 # SKILL.md, reasoning guide, trajectory schema
 tests/                 # test suite
 existing_literature/   # reference material

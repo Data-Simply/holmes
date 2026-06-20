@@ -174,3 +174,6 @@ def _grid_hull(grid: dict[str, list[float]]) -> dict[str, tuple[float, float]]:
 RANDOM_SPACE: dict[str, tuple[float, float]] = _grid_hull(GRID_SPACE)
 BAYES_SPACE: dict[str, tuple[float, float]] = _grid_hull(GRID_SPACE)
 HOLMES_SPACE: dict[str, tuple[float, float]] = _grid_hull(GRID_SPACE)
+# The deterministic rule-engine ablation (holmes/search/rule_engine.py) clamps its moves to this
+# space. A distinct object, equal by value, for the same reason as the others above.
+RULE_SPACE: dict[str, tuple[float, float]] = _grid_hull(GRID_SPACE)

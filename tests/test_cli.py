@@ -6,10 +6,24 @@ import json
 
 import pytest
 
-from holmes.cli import _build_iter_spec, _build_parser, _cmd_eval, _cmd_heuristic, _cmd_preprocess, _cmd_ranges
-from holmes.config import HOLMES_SPACE, MAX_ITERATIONS
+from holmes.cli import (
+    _build_iter_spec,
+    _build_parser,
+    _cmd_eval,
+    _cmd_heuristic,
+    _cmd_preprocess,
+    _cmd_ranges,
+    _cmd_rule,
+)
+from holmes.config import DEFAULT_SEED, HOLMES_SPACE, MAX_ITERATIONS, TOP_K
 from holmes.data.preprocess import AMAZON_CATEGORIES
 from holmes.search.heuristics import initial_hypothesis, initial_params
+
+
+def _capture_rule(captured: dict, dataset, *, seed, k, out_path):
+    """run_rule_engine stand-in that records the forwarded arguments without fitting any models."""
+    captured.update(seed=seed, k=k, out_path=out_path)
+    return {}
 
 
 def _build_or_fail(*, category, fail, dataset, **_):
@@ -40,6 +54,29 @@ def test_budget_is_not_overridable_per_call(command):
     --max-iterations flag would let HOLMES quietly run on a larger budget than grid/random/bayes."""
     with pytest.raises(SystemExit):
         _build_parser().parse_args([command, "--data", "x", "--max-iterations", "5"])
+
+
+class TestCmdRule:
+    def test_parser_defaults(self):
+        args = _build_parser().parse_args(["rule", "--data", "d"])
+        assert args.command == "rule"
+        assert args.k == TOP_K
+        assert args.seed == DEFAULT_SEED
+        assert args.out.name == "rule.json"
+
+    def test_dispatch_forwards_seed_k_and_out(self, books_dataset, tmp_path, monkeypatch):
+        """_cmd_rule loads the dataset and forwards the parsed flags to run_rule_engine unchanged.
+        The driver is stubbed so the dispatch is checked without fitting the full budget."""
+        data_dir = tmp_path / "data"
+        books_dataset.save(data_dir)
+        out = tmp_path / "rule.json"
+        captured: dict = {}
+        monkeypatch.setattr("holmes.cli.run_rule_engine", functools.partial(_capture_rule, captured))
+        args = _build_parser().parse_args(
+            ["rule", "--data", str(data_dir), "--seed", "3", "--k", "5", "--out", str(out)],
+        )
+        _cmd_rule(args)
+        assert captured == {"seed": 3, "k": 5, "out_path": out}
 
 
 class TestCmdRanges:
