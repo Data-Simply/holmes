@@ -1,4 +1,4 @@
-"""Tests for the grid, Bayesian, and HOLMES search drivers."""
+"""Tests for the grid, random, Bayesian, rule-engine, and HOLMES search drivers."""
 
 import dataclasses
 import functools
@@ -15,16 +15,39 @@ from holmes.config import (
     MAX_ITERATIONS,
     PARAM_SCALES,
     RANDOM_SPACE,
+    RULE_SPACE,
     ALSParams,
     _grid_hull,
 )
 from holmes.search import holmes as holmes_module
+from holmes.search import rule_engine
 from holmes.search.bayes import run_bayes
 from holmes.search.grid import _grid_configs, run_grid
 from holmes.search.holmes import annotate_iteration, load_trajectory, run_iteration
 from holmes.search.random_search import run_random
+from holmes.search.rule_engine import next_params, run_rule_engine
 
 SEED = 0
+
+
+# The diagnostic keys the rule engine reads from a trajectory entry; the stub must supply them all
+# or run_rule_engine (which feeds prior metrics into next_params) would KeyError. Derived nowhere
+# authoritative, so kept explicit and matched to holmes/metrics/diagnostics.py.
+_FULL_METRICS = {
+    "ndcg": 0.5,
+    "recall": 0.5,
+    "map": 0.5,
+    "train_ndcg": 0.5,
+    "train_test_ndcg_gap": 0.5,
+    "catalog_coverage": 0.5,
+    "avg_rec_popularity": 0.5,
+    "novelty": 0.5,
+    "tail_recall": 0.5,
+    "mean_factor_norm": 0.5,
+    "train_recon_error": 0.5,
+    "fit_time_seconds": 0.0,
+    "eval_time_seconds": 0.0,
+}
 
 
 def _stub_eval(calls: list[str], params: ALSParams, dataset, *, seed=0, k=10, split=None, show_progress=False):
@@ -36,7 +59,7 @@ def _stub_eval(calls: list[str], params: ALSParams, dataset, *, seed=0, k=10, sp
         "k": k,
         "split": split,
         "score": 0.5,
-        "metrics": {"ndcg": 0.5, "fit_time_seconds": 0.0, "eval_time_seconds": 0.0},
+        "metrics": dict(_FULL_METRICS),
     }
 
 
@@ -55,10 +78,10 @@ class TestComparabilityInvariants:
         # deliberately distinct objects (so monkeypatching one doesn't bind the others) but MUST
         # stay equal by value, or the comparison measures search-space coverage, not optimizer skill.
         expected = _grid_hull(GRID_SPACE)
-        assert RANDOM_SPACE == BAYES_SPACE == HOLMES_SPACE == expected
+        assert RANDOM_SPACE == BAYES_SPACE == HOLMES_SPACE == RULE_SPACE == expected
 
     def test_every_space_covers_exactly_the_als_hyperparameters(self):
-        for space in (GRID_SPACE, RANDOM_SPACE, BAYES_SPACE, HOLMES_SPACE):
+        for space in (GRID_SPACE, RANDOM_SPACE, BAYES_SPACE, HOLMES_SPACE, RULE_SPACE):
             assert set(space.keys()) == _ALS_HYPERPARAMETERS
 
     def test_grid_enumerates_exactly_the_shared_budget(self):
@@ -67,11 +90,10 @@ class TestComparabilityInvariants:
         assert len(_grid_configs()) == MAX_ITERATIONS
 
     def test_spaces_are_distinct_objects(self):
-        # The three spaces are deliberately distinct objects so an in-test monkeypatch on one
+        # The continuous spaces are deliberately distinct objects so an in-test monkeypatch on one
         # cannot silently rebind the others' search regions (see config.py and CLAUDE.md).
-        assert RANDOM_SPACE is not BAYES_SPACE
-        assert RANDOM_SPACE is not HOLMES_SPACE
-        assert BAYES_SPACE is not HOLMES_SPACE
+        spaces = (RANDOM_SPACE, BAYES_SPACE, HOLMES_SPACE, RULE_SPACE)
+        assert len({id(space) for space in spaces}) == len(spaces)
 
     def test_sampling_scales_cover_exactly_the_als_hyperparameters(self):
         # Random and bayes both read PARAM_SCALES, so they sample the same measure over the hull
@@ -92,23 +114,25 @@ class TestComparabilityInvariants:
         in_bounds_params,
         monkeypatch,
     ):
-        """All four strategies must request the same held-out split from the shared harness —
+        """All five strategies must request the same held-out split from the shared harness —
         one strategy drifting to split="test" would optimize against the reporting split
         (test-set leakage) with nothing else failing. "val" is the convention being locked; it
         has no derivable source, which is exactly why CLAUDE.md requires a guardrail test."""
         calls: list[str] = []
         stub = functools.partial(_stub_eval, calls)
-        for module in ("grid", "random_search", "bayes", "holmes"):
+        for module in ("grid", "random_search", "bayes", "rule_engine", "holmes"):
             monkeypatch.setattr(f"holmes.search.{module}.evaluate_config", stub)
         monkeypatch.setattr("holmes.search.random_search.MAX_ITERATIONS", 3)
         monkeypatch.setattr("holmes.search.bayes.MAX_ITERATIONS", 3)
+        monkeypatch.setattr("holmes.search.rule_engine.MAX_ITERATIONS", 3)
 
         run_grid(books_dataset, seed=SEED, k=10)
         run_random(books_dataset, seed=SEED, search_seed=0, k=10)
         run_bayes(books_dataset, seed=SEED, sampler_seed=0, k=10)
+        run_rule_engine(books_dataset, seed=SEED, k=10)
         run_iteration(books_dataset, {"params": in_bounds_params}, trajectory_path, seed=SEED, k=10)
 
-        assert len(calls) == len(_grid_configs()) + 3 + 3 + 1
+        assert len(calls) == len(_grid_configs()) + 3 + 3 + 3 + 1
         assert set(calls) == {"val"}
 
 
@@ -198,6 +222,77 @@ class TestBayes:
         monkeypatch.setattr("holmes.search.bayes.MAX_ITERATIONS", 0)
         with pytest.raises(ValueError, match="No trials"):
             run_bayes(books_dataset, seed=SEED, k=10, sampler_seed=0)
+
+
+def _rule_entry(params: ALSParams, **metric_overrides: float) -> dict:
+    """Build a trajectory entry for next_params: the params plus a full metric battery."""
+    metrics = dict(_FULL_METRICS)
+    metrics.update(metric_overrides)
+    return {
+        "params": params.to_dict(),
+        "seed": SEED,
+        "k": 10,
+        "split": "val",
+        "score": metrics["ndcg"],
+        "metrics": metrics,
+    }
+
+
+class TestRuleEngine:
+    def test_runs_the_fixed_max_iterations_budget(self, books_dataset, tmp_path, monkeypatch):
+        monkeypatch.setattr("holmes.search.rule_engine.MAX_ITERATIONS", 4)
+        out = tmp_path / "rule.json"
+        output = run_rule_engine(books_dataset, seed=SEED, k=10, out_path=out)
+        assert output["n_trials"] == 4
+        assert len(output["trials"]) == 4
+        saved = json.loads(out.read_text())
+        assert saved["strategy"] == "rule"
+        assert len(saved["trials"]) == 4
+
+    def test_proposed_configs_stay_within_bounds(self, books_dataset, monkeypatch):
+        monkeypatch.setattr("holmes.search.rule_engine.MAX_ITERATIONS", 8)
+        output = run_rule_engine(books_dataset, seed=SEED, k=10)
+        for trial in output["trials"]:
+            for name, (low, high) in RULE_SPACE.items():
+                assert low <= trial["params"][name] <= high
+
+    def test_run_is_deterministic(self, books_dataset, monkeypatch):
+        # No LLM and no sampler: identical inputs must yield an identical trajectory. That
+        # determinism is the ablation's selling point (and CLAUDE.md's correctness property), so
+        # lock it rather than leave it to convention.
+        monkeypatch.setattr("holmes.search.rule_engine.MAX_ITERATIONS", 6)
+        first = run_rule_engine(books_dataset, seed=SEED, k=10)
+        second = run_rule_engine(books_dataset, seed=SEED, k=10)
+        assert [t["params"] for t in first["trials"]] == [t["params"] for t in second["trials"]]
+
+    def test_zero_budget_raises_descriptive_error(self, books_dataset, monkeypatch):
+        monkeypatch.setattr("holmes.search.rule_engine.MAX_ITERATIONS", 0)
+        with pytest.raises(ValueError, match="No trials"):
+            run_rule_engine(books_dataset, seed=SEED, k=10)
+
+    def test_tail_starvation_lowers_alpha_and_raises_factors(self):
+        # Pattern 7: acceptable ndcg, tail_recall far below overall recall, head-dominated recs ->
+        # the prescribed two-HP move (alpha /4, factors *2). An absolute/cross-metric signal, so it
+        # fires from a single entry without needing a trajectory history to calibrate against.
+        params = ALSParams(factors=128, regularization=0.1, iterations=20, alpha=40.0)
+        trajectory = [_rule_entry(params, recall=0.4, tail_recall=0.0, avg_rec_popularity=0.95)]
+        proposed = next_params(trajectory)
+        assert proposed.alpha == 10.0
+        assert proposed.factors == 256
+
+    def test_no_pattern_at_the_capacity_bound_re_fits_the_current_config(self):
+        # Full-budget contract: when nothing fires and factors is already at the bound, the engine
+        # returns the current config unchanged (a no-op re-fit) rather than stopping.
+        _, fac_hi = RULE_SPACE["factors"]
+        params = ALSParams(factors=int(fac_hi), regularization=0.1, iterations=20, alpha=10.0)
+        assert next_params([_rule_entry(params)]) == params
+
+    def test_move_rounds_a_fractional_integer_field(self):
+        # Halving an odd `factors` yields a non-integral value that ALSParams.from_dict would
+        # reject; _move must round integer fields so the move resolves deterministically. 127.5
+        # rounds to the even 128 and stays in bounds.
+        base = ALSParams(factors=255, regularization=0.1, iterations=20, alpha=10.0)
+        assert rule_engine._move(base, factors=base.factors / 2).factors == 128
 
 
 class TestHolmesIteration:

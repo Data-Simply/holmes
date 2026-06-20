@@ -1,4 +1,4 @@
-"""Command-line entry point: ``holmes preprocess|grid|random|bayes|holmes-iter|heuristic|ranges|annotate|eval``."""
+"""Command-line entry point: ``holmes preprocess|grid|random|bayes|rule|holmes-iter|heuristic|ranges|annotate|eval``."""
 
 from __future__ import annotations
 
@@ -24,6 +24,7 @@ from holmes.search.harness import evaluate_config
 from holmes.search.heuristics import initial_hypothesis, initial_params
 from holmes.search.holmes import VALIDATION_STATUSES, annotate_iteration, run_iteration
 from holmes.search.random_search import run_random
+from holmes.search.rule_engine import run_rule_engine
 
 
 def _add_common_data_arg(parser: argparse.ArgumentParser) -> None:
@@ -123,6 +124,12 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     bayes.add_argument("--k", type=int, default=TOP_K, help="Ranking cut-off.")
     bayes.add_argument("--out", type=Path, default=RESULTS_DIR / "bayes.json", help="Results JSON path.")
+
+    rule = sub.add_parser("rule", help="Run the deterministic rule-engine ablation (the guide's patterns as code).")
+    _add_common_data_arg(rule)
+    _add_seed_arg(rule)
+    rule.add_argument("--k", type=int, default=TOP_K, help="Ranking cut-off.")
+    rule.add_argument("--out", type=Path, default=RESULTS_DIR / "rule.json", help="Results JSON path.")
 
     holmes_iter = sub.add_parser("holmes-iter", help="Run ONE HOLMES iteration and append to the trajectory.")
     _add_common_data_arg(holmes_iter)
@@ -305,6 +312,10 @@ def _build_iter_spec(args: argparse.Namespace) -> dict:
     return {"params": hp_values, "hypothesis": hyp_values}
 
 
+def _cmd_rule(args: argparse.Namespace) -> None:
+    run_rule_engine(Dataset.load(args.data), seed=args.seed, k=args.k, out_path=args.out)
+
+
 def _cmd_holmes_iter(args: argparse.Namespace) -> None:
     spec = _build_iter_spec(args)
     run_iteration(
@@ -388,6 +399,7 @@ _COMMANDS = {
     "grid": _cmd_grid,
     "random": _cmd_random,
     "bayes": _cmd_bayes,
+    "rule": _cmd_rule,
     "holmes-iter": _cmd_holmes_iter,
     "heuristic": _cmd_heuristic,
     "ranges": _cmd_ranges,
