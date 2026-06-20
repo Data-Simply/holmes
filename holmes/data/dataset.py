@@ -117,6 +117,31 @@ class Dataset:
         """Fraction of the user-item matrix that is observed."""
         return self.n_interactions / (self.n_users * self.n_items)
 
+    @property
+    def mean_rating(self) -> float:
+        """Mean stored training rating (0.0 for an empty matrix)."""
+        return float(self.train_ui.data.mean()) if self.n_interactions else 0.0
+
+    def describe(self) -> dict[str, float]:
+        """Dataset characteristics the HOLMES agent reads to choose a starting configuration.
+
+        Surfaced by ``holmes ranges`` so the agent picks its own first config from the data
+        signal, rather than a hard-coded heuristic mapping signal to params. The starting point
+        is then part of the optimizer's behavior, comparable to how every other strategy
+        initializes.
+
+        Returns:
+            dict[str, float]: ``n_users``, ``n_items``, ``n_interactions``, ``density``,
+            ``mean_rating``.
+        """
+        return {
+            "n_users": self.n_users,
+            "n_items": self.n_items,
+            "n_interactions": self.n_interactions,
+            "density": self.density,
+            "mean_rating": self.mean_rating,
+        }
+
     def save(self, directory: Path) -> None:
         """Persist the dataset to ``directory`` as sparse matrices plus a metadata file.
 

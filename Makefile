@@ -149,7 +149,7 @@ holmes:
 		ln -s "$(ABS_SKILL)" "$$sb/.claude/skills/holmes-hpo"; \
 		ln -s "$(ABS_PROC)/$$cat" "$$sb/data/processed/$$cat"; \
 		ln -s "$$traj" "$$sb/trajectory.json"; \
-		( cd "$$sb" && claude --model "$$m" --effort "$$e" "Use the holmes-hpo skill to run the agentic tuning loop on --data data/processed/$$cat, logging to --trajectory trajectory.json with --seed $$fs. If the trajectory already has entries, continue from there rather than re-seeding the heuristic." ); \
+		( cd "$$sb" && claude --model "$$m" --effort "$$e" "Use the holmes-hpo skill to run the agentic tuning loop on --data data/processed/$$cat, logging to --trajectory trajectory.json with --seed $$fs. If the trajectory already has entries, continue from there rather than restarting iteration 1." ); \
 		rc=$$?; rm -rf "$$sb"; [ "$$rc" = 0 ] || exit "$$rc"; \
 	done; done; done; done; done
 

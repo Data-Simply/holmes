@@ -36,7 +36,7 @@ def battery_keys(books_dataset) -> set[str]:
 
 
 @pytest.fixture
-def documented_vocabulary(battery_keys) -> set[str]:
+def documented_vocabulary(battery_keys, books_dataset) -> set[str]:
     """Every underscore-containing identifier the docs may legitimately reference."""
     return (
         battery_keys
@@ -44,8 +44,10 @@ def documented_vocabulary(battery_keys) -> set[str]:
         | set(EvalResult.__annotations__)
         | set(VALIDATION_STATUSES)
         | {field.name for field in dataclasses.fields(ALSParams)}
-        # The one key `holmes ranges` prints beside the HP bounds (see cli._cmd_ranges).
+        # What `holmes ranges` prints (see cli._cmd_ranges): the budget plus the dataset signal
+        # the agent reasons from to choose iteration 1.
         | {"max_iterations"}
+        | set(books_dataset.describe())
     )
 
 

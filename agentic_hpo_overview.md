@@ -26,8 +26,10 @@ never moves across reasonable HP changes, it isn't informative.
 to ten patterns covering the realistic failure modes is enough. This is where your ML expertise gets encoded — the
 LLM isn't deriving these from first principles, it's applying them.
 
-**Heuristic initial params.** A function from dataset or problem characteristics to a sensible starting point. Saves
-an iteration that would otherwise just confirm the defaults are reasonable.
+**Dataset signal for the starting point.** Surface the dataset's size/density characteristics to the agent rather
+than hard-coding a function that maps them to params, and let it choose the first configuration the same way it
+chooses every later one. The starting point is then part of the agent's optimizer behavior, not a privileged
+external component the baselines lack — which keeps the agentic strategy comparable to grid/random/Bayesian search.
 
 **An append-only trajectory log.** JSON file with one entry per iteration: params, hypothesis written before the
 run, metrics, interpretation written after. The hypothesis-before-results discipline is what prevents post-hoc
@@ -108,10 +110,10 @@ AI-search runs are 5-15 iterations × 3 seeds = 15-45 fits, vs. hundreds for gri
 
 Keep: the trajectory schema (params + mechanism prediction + outcome prediction + falsifiers + metrics + validation
 status + interpretation), the run-one-iteration script pattern, the reasoning-guide-as-reference-document, the
-autonomous loop structure with the four-outcomes framework, the setup-integrity stop conditions, the initial-params
-heuristic function.
+autonomous loop structure with the four-outcomes framework, the setup-integrity stop conditions, surfacing dataset
+signal so the agent chooses its own starting point.
 
-Replace: the diagnostic battery, the reasoning guide, the heuristic initial params, the training wrapper.
+Replace: the diagnostic battery, the reasoning guide, the dataset-signal block, the training wrapper.
 
 The questions worth answering before you start:
 

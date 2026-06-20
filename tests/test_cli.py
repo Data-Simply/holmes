@@ -6,10 +6,9 @@ import json
 
 import pytest
 
-from holmes.cli import _build_iter_spec, _build_parser, _cmd_eval, _cmd_heuristic, _cmd_preprocess, _cmd_ranges
+from holmes.cli import _build_iter_spec, _build_parser, _cmd_eval, _cmd_preprocess, _cmd_ranges
 from holmes.config import HOLMES_SPACE, MAX_ITERATIONS
 from holmes.data.preprocess import AMAZON_CATEGORIES
-from holmes.search.heuristics import initial_hypothesis, initial_params
 
 
 def _build_or_fail(*, category, fail, dataset, **_):
@@ -34,25 +33,30 @@ def _iter_namespace(**overrides):
     return argparse.Namespace(**{**defaults, **overrides})
 
 
-@pytest.mark.parametrize("command", ["holmes-iter", "heuristic"])
-def test_budget_is_not_overridable_per_call(command):
+def test_budget_is_not_overridable_per_call():
     """CLAUDE.md: the fit budget is the single MAX_ITERATIONS with no per-call override — a
-    --max-iterations flag would let HOLMES quietly run on a larger budget than grid/random/bayes."""
+    --max-iterations flag would let HOLMES quietly run on a larger budget than grid/random/bayes.
+    holmes-iter is the only per-call strategy, so it is the only place the flag could leak in."""
     with pytest.raises(SystemExit):
-        _build_parser().parse_args([command, "--data", "x", "--max-iterations", "5"])
+        _build_parser().parse_args(["holmes-iter", "--data", "x", "--max-iterations", "5"])
 
 
 class TestCmdRanges:
-    def test_prints_hp_bounds_and_max_iterations(self, capsys):
-        """The agent calls this to discover BOTH the supported HP bounds and the iteration budget,
-        so SKILL.md never has to hardcode numbers that drift from the config."""
-        _cmd_ranges(argparse.Namespace())
+    def test_prints_hp_bounds_budget_and_dataset_signal(self, books_dataset, tmp_path, capsys):
+        """The agent calls this to discover the supported HP bounds, the iteration budget, and the
+        dataset signal it reasons from to choose iteration 1 — so SKILL.md never hardcodes numbers
+        that drift from the config, and the starting point is chosen from live data, not a formula."""
+        data_dir = tmp_path / "data"
+        books_dataset.save(data_dir)
+
+        _cmd_ranges(argparse.Namespace(data=data_dir))
 
         printed = json.loads(capsys.readouterr().out)
         assert printed["max_iterations"] == MAX_ITERATIONS
         assert set(printed["ranges"].keys()) == set(HOLMES_SPACE.keys())
         for name, (low, high) in HOLMES_SPACE.items():
             assert printed["ranges"][name] == [low, high]
+        assert printed["dataset"] == books_dataset.describe()
 
 
 class TestCmdEval:
@@ -135,44 +139,6 @@ class TestCmdPreprocess:
         args = _build_parser().parse_args(["preprocess", "--all", "--source", "reviews.jsonl"])
         with pytest.raises(SystemExit, match="--source"):
             _cmd_preprocess(args)
-
-
-class TestCmdHeuristic:
-    def test_trajectory_appends_iter_one_with_derived_hypothesis(self, books_dataset, tmp_path):
-        """With --trajectory, heuristic fits and appends iter 1 directly — no iter.json hop.
-
-        The recorded params and hypothesis are pinned to the deterministic heuristic output
-        (derived from its source functions, not asserted as merely non-empty), so a regression
-        that records a stub or padded hypothesis fails here.
-        """
-        data_dir = tmp_path / "data"
-        books_dataset.save(data_dir)
-        trajectory_path = tmp_path / "trajectory.json"
-        args = _build_parser().parse_args(
-            ["heuristic", "--data", str(data_dir), "--trajectory", str(trajectory_path)],
-        )
-
-        _cmd_heuristic(args)
-
-        trajectory = json.loads(trajectory_path.read_text())
-        assert len(trajectory) == 1
-        entry = trajectory[0]
-        expected_params, expected_rationale = initial_params(books_dataset)
-        assert entry["iteration"] == 1
-        assert entry["params"] == expected_params.to_dict()
-        assert entry["hypothesis"] == initial_hypothesis(expected_params, expected_rationale)
-        assert "ndcg" in entry["metrics"]
-
-    def test_no_trajectory_prints_to_stdout(self, books_dataset, tmp_path, capsys):
-        """Without --trajectory, the inspection form is preserved (params + rationale)."""
-        data_dir = tmp_path / "data"
-        books_dataset.save(data_dir)
-        args = _build_parser().parse_args(["heuristic", "--data", str(data_dir)])
-
-        _cmd_heuristic(args)
-
-        printed = json.loads(capsys.readouterr().out)
-        assert set(printed.keys()) == {"params", "rationale"}
 
 
 class TestBuildIterSpec:
