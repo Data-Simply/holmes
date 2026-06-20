@@ -48,7 +48,7 @@ NEED_CATS = test -n "$(CATEGORIES)" || { echo "No preprocessed categories under 
 
 .DEFAULT_GOAL := help
 .NOTPARALLEL:  # baselines fit multi-GB ALS models; never run them concurrently
-.PHONY: help grid random bayes holmes baselines
+.PHONY: help grid random bayes rule holmes baselines
 
 # --- Help (default) --------------------------------------------------------
 help:
@@ -58,9 +58,10 @@ help:
 	@echo "  grid        Grid search,   per fit seed         -> $(RESULTS_DIR)/<cat>/grid-seed<N>.json"
 	@echo "  random      Random search, per fit x search seed -> $(RESULTS_DIR)/<cat>/random-seed<N>-search<M>.json"
 	@echo "  bayes       Optuna TPE,    per fit x search seed -> $(RESULTS_DIR)/<cat>/bayes-seed<N>-search<M>.json"
+	@echo "  rule        Rule engine,   per fit seed         -> $(RESULTS_DIR)/<cat>/rule-seed<N>.json"
 	@echo "  holmes      Sandboxed session per fit x trial x model x effort"
 	@echo "              -> $(RESULTS_DIR)/<cat>/trajectory-seed<N>-trial<T>-<model>-<effort>.json"
-	@echo "  baselines   Run grid, random, bayes serially (all categories/seeds)."
+	@echo "  baselines   Run grid, random, bayes, rule serially (all categories/seeds)."
 	@echo
 	@echo "Variables (current values):"
 	@echo "  PROCESSED_DIR = $(PROCESSED_DIR)"
@@ -76,9 +77,9 @@ help:
 	@echo "Each run logs [n/total] progress across the category x seed sweep."
 
 # --- Baselines -------------------------------------------------------------
-# grid runs once per fit seed (it is deterministic given the seed). random and bayes sweep the
-# full FIT_SEEDS x SEARCH_SEEDS cross product so fit-noise and search variance can be separated.
-# A run whose --out file already exists is skipped, so reruns resume after a failure.
+# grid and rule run once per fit seed (both are deterministic given the seed). random and bayes
+# sweep the full FIT_SEEDS x SEARCH_SEEDS cross product so fit-noise and search variance can be
+# separated. A run whose --out file already exists is skipped, so reruns resume after a failure.
 grid:
 	@$(NEED_CATS)
 	@total=$$(( $(words $(CATEGORIES)) * $(words $(FIT_SEEDS)) )); i=0; \
@@ -114,6 +115,18 @@ bayes:
 		echo "[$$i/$$total] >>> bayes  $$cat fit-seed=$$fs sampler-seed=$$ss"; \
 		$(UV) holmes bayes --data $(PROCESSED_DIR)/$$cat --seed $$fs --sampler-seed $$ss --out $$out || exit $$?; \
 	done; done; done
+
+rule:
+	@$(NEED_CATS)
+	@total=$$(( $(words $(CATEGORIES)) * $(words $(FIT_SEEDS)) )); i=0; \
+	for cat in $(CATEGORIES); do for fs in $(FIT_SEEDS); do \
+		i=$$((i+1)); \
+		out=$(RESULTS_DIR)/$$cat/rule-seed$$fs.json; \
+		if [ -f "$$out" ]; then echo "[$$i/$$total] === rule   $$cat seed=$$fs  (skip: exists)"; continue; fi; \
+		mkdir -p $(RESULTS_DIR)/$$cat; \
+		echo "[$$i/$$total] >>> rule   $$cat fit-seed=$$fs"; \
+		$(UV) holmes rule --data $(PROCESSED_DIR)/$$cat --seed $$fs --out $$out || exit $$?; \
+	done; done
 
 # --- HOLMES agentic loop ---------------------------------------------------
 # HOLMES is the one strategy driven by an LLM, and the comparison only holds if that agent sees
@@ -154,5 +167,5 @@ holmes:
 	done; done; done; done; done
 
 # --- Baselines aggregate ---------------------------------------------------
-# The three unattended baselines, run serially. HOLMES is interactive, so it is its own target.
-baselines: grid random bayes
+# The four unattended baselines, run serially. HOLMES is interactive, so it is its own target.
+baselines: grid random bayes rule
