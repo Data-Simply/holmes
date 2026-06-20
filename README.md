@@ -83,10 +83,13 @@ uv run holmes random --data data/processed/Books --seed 0 --search-seed 0
 uv run holmes bayes --data data/processed/Books --seed 0 --sampler-seed 0
 
 # 2d. The agentic HOLMES loop is driven by Claude Code via skill/SKILL.md. Each round runs
-#     ONE iteration, appending diagnostics to an append-only trajectory log:
-uv run holmes heuristic --data data/processed/Books          # suggested starting params
-uv run holmes holmes-iter --data data/processed/Books \
-  --input iter.json --trajectory results/trajectory.json --seed 0
+#     ONE iteration, appending diagnostics to an append-only trajectory log. Iteration 1 is a
+#     normal iteration: the LLM reads `holmes ranges` (HP bounds, budget, dataset signal) and
+#     chooses its own starting config — there is no separate seeding step.
+uv run holmes ranges --data data/processed/Books             # HP bounds, budget, dataset signal
+uv run holmes holmes-iter --data data/processed/Books --trajectory results/trajectory.json \
+  --seed 0 --factors 128 --regularization 0.1 --iterations 22 --alpha 22.0 \
+  --mechanism "..." --outcome "..." --falsifiers "..."
 
 # 3. Score a chosen config on the held-out test split for an unbiased number.
 uv run holmes eval --data data/processed/Books --params '{"factors": 96, "regularization": 0.05, "iterations": 30, "alpha": 20.0}' --split test
@@ -122,12 +125,11 @@ holmes/
   metrics/diagnostics.py  # the diagnostic battery
   search/
     harness.py         # fit one config (one seed), compute the diagnostic battery
-    heuristics.py      # initial params from dataset characteristics
     grid.py            # grid search
     random_search.py   # random search
     bayes.py           # Optuna Bayesian optimization
     holmes.py          # run ONE HOLMES iteration, append to trajectory
-  cli.py               # `holmes preprocess|grid|random|bayes|holmes-iter|heuristic|eval`
+  cli.py               # `holmes preprocess|grid|random|bayes|holmes-iter|ranges|eval`
 skill/                 # SKILL.md, reasoning guide, trajectory schema
 tests/                 # test suite
 existing_literature/   # reference material

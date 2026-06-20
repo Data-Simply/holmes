@@ -33,7 +33,7 @@ Polars ingestion lazy until indices are assigned, cache matrix-wide arrays on `D
 - Run all tests: `uv run pytest`
 - Run a specific test: `uv run pytest -k "test_name"` (don't guess full node paths)
 - Lint and format: `uv run ruff format . && uv run ruff check .`
-- Run the CLI: `uv run holmes <preprocess|grid|random|bayes|holmes-iter|heuristic|eval> ...`
+- Run the CLI: `uv run holmes <preprocess|grid|random|bayes|holmes-iter|ranges|eval> ...`
 - Always use `uv run` so the correct environment and dependencies are used. Never call `pip`.
 
 ## Architecture & Design Principles

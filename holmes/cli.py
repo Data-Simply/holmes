@@ -1,4 +1,4 @@
-"""Command-line entry point: ``holmes preprocess|grid|random|bayes|holmes-iter|heuristic|ranges|annotate|eval``."""
+"""Command-line entry point: ``holmes preprocess|grid|random|bayes|holmes-iter|ranges|annotate|eval``."""
 
 from __future__ import annotations
 
@@ -21,7 +21,6 @@ from holmes.data.preprocess import AMAZON_CATEGORIES, build_dataset
 from holmes.search.bayes import run_bayes
 from holmes.search.grid import run_grid
 from holmes.search.harness import evaluate_config
-from holmes.search.heuristics import initial_hypothesis, initial_params
 from holmes.search.holmes import VALIDATION_STATUSES, annotate_iteration, run_iteration
 from holmes.search.random_search import run_random
 
@@ -155,26 +154,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     _add_progress_arg(holmes_iter)
 
-    heuristic = sub.add_parser(
-        "heuristic",
-        help="Print heuristic initial params, or (with --trajectory) fit them and append iter 1.",
-    )
-    _add_common_data_arg(heuristic)
-    heuristic.add_argument(
-        "--trajectory",
-        type=Path,
-        default=None,
-        help="If set, fit the heuristic config with the derived hypothesis and append iter 1 here. "
-        "Without this flag, the heuristic params and rationale are printed for inspection.",
-    )
-    _add_seed_arg(heuristic)
-    heuristic.add_argument("--k", type=int, default=TOP_K, help="Ranking cut-off (used when --trajectory is set).")
-    _add_progress_arg(heuristic)
-
-    sub.add_parser(
+    ranges = sub.add_parser(
         "ranges",
-        help="Print the supported HOLMES hyperparameter ranges as JSON (so the agent can stay in bounds).",
+        help="Print the HOLMES HP bounds, fit budget, and dataset characteristics as JSON.",
     )
+    _add_common_data_arg(ranges)
 
     annotate = sub.add_parser(
         "annotate",
@@ -317,29 +301,13 @@ def _cmd_holmes_iter(args: argparse.Namespace) -> None:
     )
 
 
-def _cmd_heuristic(args: argparse.Namespace) -> None:
-    dataset = Dataset.load(args.data)
-    params, rationale = initial_params(dataset)
-    if args.trajectory is not None:
-        spec = {"params": params.to_dict(), "hypothesis": initial_hypothesis(params, rationale)}
-        run_iteration(
-            dataset,
-            spec,
-            args.trajectory,
-            seed=args.seed,
-            k=args.k,
-            show_progress=args.progress,
-        )
-        return
-    print(json.dumps({"params": params.to_dict(), "rationale": rationale}, indent=2))
-
-
-def _cmd_ranges(_args: argparse.Namespace) -> None:
+def _cmd_ranges(args: argparse.Namespace) -> None:
     print(
         json.dumps(
             {
                 "max_iterations": MAX_ITERATIONS,
                 "ranges": {name: list(bounds) for name, bounds in HOLMES_SPACE.items()},
+                "dataset": Dataset.load(args.data).describe(),
             },
             indent=2,
         ),
@@ -389,7 +357,6 @@ _COMMANDS = {
     "random": _cmd_random,
     "bayes": _cmd_bayes,
     "holmes-iter": _cmd_holmes_iter,
-    "heuristic": _cmd_heuristic,
     "ranges": _cmd_ranges,
     "annotate": _cmd_annotate,
     "eval": _cmd_eval,

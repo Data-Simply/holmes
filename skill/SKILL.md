@@ -15,7 +15,7 @@ hypothesis*, run one fit, and decide whether the hypothesis was validated. The t
 (hypothesis → params → metrics → interpretation) is the deliverable.
 
 Every step is a `holmes` CLI call. The tool is installed on your PATH, so invoke it bare
-(`holmes ranges`, `holmes heuristic …`) — do not prefix it with `uv run` or anything else.
+(`holmes ranges`, `holmes holmes-iter …`) — do not prefix it with `uv run` or anything else.
 
 You are given two paths: the input dataset (the `--data` directory) and the trajectory log (the
 `--trajectory` file). Pass *exactly those* to every command — do not hardcode or invent paths. The
@@ -29,8 +29,9 @@ edits-via-flag are deterministic where free-form edits are not.
   `--data` pointing at it — there is no default.
 - A shared fit budget caps the loop — a hard cap shared with the grid and Bayes baselines so
   the three strategies are compared at the same number of ALS fits. Call `holmes ranges` at the
-  start of the loop to read both the HP bounds and the `max_iterations` budget; the CLI
-  enforces the cap (`holmes-iter` refuses to run once the trajectory reaches it).
+  start of the loop to read the HP bounds, the `max_iterations` budget, and the dataset signal
+  you choose iteration 1 from; the CLI enforces the cap (`holmes-iter` refuses to run once the
+  trajectory reaches it).
 - You want to understand *why* a config is better, not just which one scored highest.
 
 ## The hyperparameters
@@ -38,25 +39,26 @@ edits-via-flag are deterministic where free-form edits are not.
 You tune four ALS hyperparameters: `factors` (latent dimensionality), `regularization` (L2
 penalty), `iterations` (ALS sweeps), and `alpha` (confidence scaling on positives).
 
-Run `holmes ranges` once at the start to print the supported bounds as JSON — they are derived
-from `GRID_SPACE` so the agentic loop, grid, and Bayes all optimize over the same region. Stay
-within those bounds; out-of-bounds params are rejected by `holmes-iter`.
+Run `holmes ranges --data <data>` once at the start. It prints, as JSON, the supported bounds
+(derived from `GRID_SPACE`, so the agentic loop, grid, and Bayes all optimize over the same
+region), the `max_iterations` budget, and a `dataset` block of size/density signal you reason
+from to choose iteration 1. Stay within the bounds; out-of-bounds params are rejected by
+`holmes-iter`.
 
 ## Running a fit
 
-Each `heuristic`, `holmes-iter`, and `eval` call fits one ALS model (~1–4 min, longer at
+Each `holmes-iter` and `eval` call fits one ALS model (~1–4 min, longer at
 `factors=512`). Run every fit as a **background** command and wait for the completion
 notification — do not poll. Never use `sleep` / `pgrep` / `pkill` / `kill` / `while`-wait
 loops to wait on it: foreground `sleep` is blocked in this harness, those loops get
 auto-backgrounded or killed, and the process-control commands trigger permission prompts you
 don't need. The completion notification is the signal; check the trajectory afterwards.
 
-Run **one fit at a time**. `holmes-iter` and `heuristic --trajectory ...` both
-read-modify-append the trajectory file, so two concurrent fits race on it and one
-iteration's entry will be lost.
+Run **one fit at a time**. `holmes-iter` read-modify-appends the trajectory file, so two
+concurrent fits race on it and one iteration's entry will be lost.
 
 If a run looks suspiciously long and you want a liveness signal, pass `--progress` to
-`holmes heuristic` / `holmes-iter` / `holmes eval`: the underlying ALS fit streams a
+`holmes holmes-iter` / `holmes eval`: the underlying ALS fit streams a
 per-sweep tqdm bar to stderr (e.g. `13/20 [01:42<00:38]`), which you can read out of the
 backgrounded command's output file to see sweeps tick and an ETA. Leave it off by default to
 keep the trajectory output clean — turn it on when you have reason to suspect a hang.
@@ -76,16 +78,38 @@ to pace yourself. Stop when any of these conditions is met:
   weak, and ask for direction. Do not burn the rest of the budget chasing noise.
 - A setup-integrity condition fires (see below).
 
-### Iteration 1 — start from the heuristic
+### Iteration 1 — choose your own starting point
 
-The heuristic embodies standard implicit-ALS practice; treat its choices as iteration 1's
-hypothesis. One command computes the heuristic params, derives the hypothesis from the per-HP
-rationales (e.g. "factors=128 because the dataset is large; falsifier: high
-`train_recon_error` means capacity was not the bottleneck"), fits one seed, and appends the
-entry to the trajectory:
+There is no separate seeding step: **iteration 1 is a normal `holmes-iter` call.** You pick the
+starting configuration yourself by reasoning from the `dataset` block `holmes ranges` prints
+(`n_users`, `n_items`, `n_interactions`, `density`, `mean_rating`) and the HP bounds — the
+starting point is part of your optimizer behavior, not a privileged seed the baselines lack.
+Standard implicit-ALS starting points, grounded in that signal:
+
+- `factors` — capacity tracks data volume: low on the searchable range for a small or sparse
+  matrix, higher when `n_interactions` is large.
+- `regularization` — near the geometric midpoint of its log range, leaving equal multiplicative
+  headroom to move up or down with the loop's bold moves.
+- `iterations` — near the midpoint of the sweep range, with headroom to raise it if
+  `train_recon_error` stays high.
+- `alpha` — chosen so the Hu et al. (2008) confidence `c = 1 + alpha * mean_rating` lands near
+  ~100 on an average positive.
+
+Run it like any other iteration, with all seven flags. Because there is no prior iteration to
+compare against, frame the opening hypothesis in **absolute** terms: the outcome is the *floor*
+later iterations must beat, and the falsifiers name absolute diagnostic conditions rather than
+deltas.
 
 ```bash
-holmes heuristic --data <data> --trajectory <trajectory> --seed 0
+holmes holmes-iter --data <data> --trajectory <trajectory> --seed 0 \
+  --factors 128 --regularization 0.1 --iterations 22 --alpha 22.0 \
+  --mechanism "factors=128 gives capacity for this interaction count; alpha=22 puts Hu et al. \
+    confidence c = 1 + alpha*mean_rating near 100; regularization=0.1 sits mid-range." \
+  --outcome  "ndcg lands above a popularity baseline but below a tuned upper bound — the floor \
+    subsequent iterations must beat." \
+  --falsifiers "If train_recon_error stays high, capacity (factors) or iterations underspecified \
+    the fit. If train_test_ndcg_gap is large, regularization=0.1 is too low for this matrix. If \
+    tail_recall is near zero, alpha over-weights head items."
 ```
 
 The diagnostic battery is computed on the **validation** split. The entry is recorded with
@@ -140,8 +164,8 @@ diagnostic doesn't move (i.e., you're hedging), make it sharper. Only submit the
 
 ### Interpret AFTER running — annotate via the CLI
 
-`holmes heuristic --trajectory ...` and `holmes holmes-iter` both echo the just-appended
-trajectory entry to stdout as JSON — there is no second command to read it. Compare the
+`holmes holmes-iter` echoes the just-appended trajectory entry to stdout as JSON — there is no
+second command to read it. Compare the
 observed metric moves to your mechanism and outcome predictions. Classify the result into
 exactly one of four states, then record both via:
 

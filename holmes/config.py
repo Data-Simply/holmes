@@ -136,13 +136,13 @@ silently treated as integer."""
 
 
 # --- Grid-search space -----------------------------------------------------
-# Anchored on the heuristic point estimate. With the rating-weighted matrix (r in {4,5}; see
-# ``holmes/data/preprocess.py``), Hu et al. confidence ``c_ui = 1 + alpha * r_ui`` sets the
-# joint scale: ``lambda*I`` has to bind against the diagonal of ``Y^T C_u Y`` which tracks
-# ``alpha * r``, so reg sits in 0.01-1 (a standard log-spaced implicit-ALS L2 range, bracketing
-# the 0.01 ``ALSParams``/heuristic default) and alpha is centred where c_ui lands in ~20-200.
-# ``alpha=1.0`` is omitted (it turns off confidence weighting). BAYES_SPACE and HOLMES_SPACE
-# are derived from this grid's hull, so changing GRID_SPACE retunes the other two too.
+# With the rating-weighted matrix (r in {4,5}; see ``holmes/data/preprocess.py``), Hu et al.
+# confidence ``c_ui = 1 + alpha * r_ui`` sets the joint scale: ``lambda*I`` has to bind against
+# the diagonal of ``Y^T C_u Y`` which tracks ``alpha * r``, so reg sits in 0.01-1 (a standard
+# log-spaced implicit-ALS L2 range, bracketing the 0.01 ``ALSParams`` default) and alpha is
+# centred where c_ui lands in ~20-200. ``alpha=1.0`` is omitted (it turns off confidence
+# weighting). BAYES_SPACE and HOLMES_SPACE are derived from this grid's hull, so changing
+# GRID_SPACE retunes the other two too.
 GRID_SPACE: dict[str, list[float]] = {
     "factors": [64, 128, 256, 512],
     "regularization": [0.01, 0.1, 1.0],
