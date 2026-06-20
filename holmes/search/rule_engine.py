@@ -6,7 +6,9 @@ protocol**. It does not write a hypothesis, predict which mechanism will move, c
 into validated/coincidence/null, or disambiguate. It just reacts to the current diagnostics with
 the guide's prescribed move (``skill/references/REASONING_GUIDE.md``). That removal is the point:
 comparing HOLMES against this isolates whether HOLMES's win is the *discipline* or the injected
-*guide*.
+*guide*. The guide covers moves, not initialization, so iteration 1 starts from the
+dataset-independent :class:`~holmes.config.ALSParams` defaults — the engine shares no starting rule
+with HOLMES, which seeds iteration 1 from the heuristic.
 
 Three deliberate design choices keep the comparison fair by construction:
 
@@ -35,7 +37,6 @@ from typing import TYPE_CHECKING
 
 from holmes.config import DEFAULT_SEED, INTEGER_PARAMS, MAX_ITERATIONS, RULE_SPACE, TOP_K, ALSParams
 from holmes.search.harness import EvalResult, SearchOutput, evaluate_config, log_trial, write_search_output
-from holmes.search.heuristics import initial_params
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -219,10 +220,11 @@ def run_rule_engine(
 ) -> SearchOutput:
     """Run the rule engine for the shared fixed budget and return the trial log and best.
 
-    Starts from the same heuristic initial params as HOLMES, then applies :func:`next_params` each
-    round for the full :data:`holmes.config.MAX_ITERATIONS` budget. One seed is fit per
-    configuration, matching the other strategies. The run is fully deterministic: identical inputs
-    yield an identical trajectory.
+    Starts from the dataset-independent :class:`ALSParams` defaults — the guide prescribes moves,
+    not an initial config, so the engine shares no starting rule with HOLMES (which seeds iteration
+    1 from the heuristic). It then applies :func:`next_params` each round for the full
+    :data:`holmes.config.MAX_ITERATIONS` budget. One seed is fit per configuration, matching the
+    other strategies. The run is fully deterministic: identical inputs yield an identical trajectory.
 
     Args:
         dataset: Preprocessed interaction matrix.
@@ -233,7 +235,7 @@ def run_rule_engine(
     Returns:
         SearchOutput: ``trials`` (every evaluated config) and ``best`` (highest NDCG@K).
     """
-    params, _rationale = initial_params(dataset)
+    params = ALSParams()
     trials: list[EvalResult] = []
     for i in range(1, MAX_ITERATIONS + 1):
         result = evaluate_config(params, dataset, seed=seed, k=k, split="val")

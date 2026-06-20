@@ -95,6 +95,15 @@ class TestComparabilityInvariants:
         spaces = (RANDOM_SPACE, BAYES_SPACE, HOLMES_SPACE, RULE_SPACE)
         assert len({id(space) for space in spaces}) == len(spaces)
 
+    def test_rule_engine_default_start_lies_in_the_search_region(self):
+        # The rule engine is the only strategy seeded from a fixed external config (the ALSParams
+        # defaults) rather than sampled from / moved within the hull. Lock that this start is inside
+        # RULE_SPACE so its first fit is in-region like every other strategy; derive both sides from
+        # their sources so a GRID_SPACE retune that excludes the defaults fails loudly here.
+        defaults = ALSParams().to_dict()
+        for name, (low, high) in RULE_SPACE.items():
+            assert low <= defaults[name] <= high
+
     def test_sampling_scales_cover_exactly_the_als_hyperparameters(self):
         # Random and bayes both read PARAM_SCALES, so they sample the same measure over the hull
         # by construction; this locks the table itself to the hyperparameter set.
@@ -248,6 +257,14 @@ class TestRuleEngine:
         saved = json.loads(out.read_text())
         assert saved["strategy"] == "rule"
         assert len(saved["trials"]) == 4
+
+    def test_starts_from_the_als_defaults_not_the_heuristic(self, books_dataset, monkeypatch):
+        # Guide-only: the guide prescribes moves, not a starting config, so iteration 1 is the
+        # dataset-independent ALSParams defaults rather than the heuristic. Locks that the ablation
+        # shares no initialization rule with HOLMES.
+        monkeypatch.setattr("holmes.search.rule_engine.MAX_ITERATIONS", 1)
+        output = run_rule_engine(books_dataset, seed=SEED, k=10)
+        assert output["trials"][0]["params"] == ALSParams().to_dict()
 
     def test_proposed_configs_stay_within_bounds(self, books_dataset, monkeypatch):
         monkeypatch.setattr("holmes.search.rule_engine.MAX_ITERATIONS", 8)
