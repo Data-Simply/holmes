@@ -1,8 +1,14 @@
 # Fanning the baselines out across Hetzner CPX62 boxes
 
-The `holmes dispatch` planner splits the `grid`/`random`/`bayes` sweep into one runnable script per
-box; this directory provisions the boxes to run them. HOLMES (the agentic loop) is **not** part of
-this flow — it stays on the `make holmes` target, which sandboxes each LLM session.
+`holmes dispatch` plans the `grid`/`random`/`bayes` sweep into independent cells and runs them — on a
+fleet of cloud boxes or on your own machine. HOLMES (the agentic loop) is **not** part of this flow;
+it stays on the `make holmes` target, which sandboxes each LLM session.
+
+```
+holmes dispatch plan   # write one runnable script per box (add --run to run here, now)
+holmes dispatch up     # provision a fleet, ship data + scripts, start the runs
+holmes dispatch down   # fetch results back, then delete the fleet
+```
 
 ## Target instance: CPX62
 
@@ -22,56 +28,57 @@ generation, so a config scores identically on every box — keep the whole campa
 > **Check first:** measure peak RSS of a `factors=512` fit. If a single model exceeds ~31 GiB,
 > no CPX box holds it and you must move to the dedicated CCX line.
 
-## 1. Provision
+## Run locally (no fleet)
 
-```sh
-hcloud context create holmes          # one-time: authenticate the CLI
-uv run python deploy/provision.py 8 \  # 8 boxes, holmes-box-0 .. holmes-box-7
-    --repo-url git@github.com:Data-Simply/holmes.git \
-    --branch main \
-    --ssh-key my-key \
-    --location nbg1                    # EU only: nbg1 | fsn1 | hel1 (enforced)
-```
-
-cloud-init installs `uv`, clones the repo, and runs `uv sync` on each box.
-
-## 2. Plan the shards
-
-```sh
-uv run holmes dispatch --boxes 8 --fit-seeds 0 1 2 --search-seeds 0
-# -> plans/box-0.sh .. plans/box-7.sh
-```
-
-## 3. Ship the data + script and run
-
-Each box needs the preprocessed datasets and its own script. Preprocess **once** (the raw data is
-30M+ rows) and copy `data/processed/` out — don't re-preprocess per box:
-
-```sh
-for i in $(seq 0 7); do
-  ip=$(hcloud server ip "holmes-box-$i")
-  rsync -a data/processed/        root@"$ip":/opt/holmes/data/processed/
-  rsync -a "plans/box-$i.sh"      root@"$ip":/opt/holmes/box.sh
-  ssh root@"$ip" 'cd /opt/holmes && nohup bash box.sh > box.log 2>&1 &'
-done
-```
-
-Results land at `results/<cat>/<strategy>-seed<N>...json`, namespaced per cell so shards never
-collide. Pull them back with `rsync` (or write to a shared volume). The scripts are skip-if-exists
-guarded, so re-running a box after a crash resumes rather than redoing finished cells.
-
-## Run the baselines serially on one machine
-
-No fleet needed — plan a single box and run its script. This is the replacement for the old
+Plan a single box and run its cells right here, one at a time — the replacement for the old
 `make baselines` target:
 
 ```sh
-uv run holmes dispatch --boxes 1     # plans/box-0.sh with every cell
-bash plans/box-0.sh                  # runs them one at a time, skip-if-exists guarded
+uv run holmes dispatch plan --boxes 1 --run        # everything, serially, on this machine
+uv run holmes dispatch plan --boxes 1 --run --strategies grid   # just one strategy
 ```
 
-## Teardown
+Without `--run`, `plan` only writes `plans/box-0.sh` for you to inspect or `bash` yourself. `--run`
+honours the same skip-if-exists guard, so it resumes after an interruption.
+
+## Run on a Hetzner fleet
+
+Prerequisites: the `hcloud` CLI authenticated (`hcloud context create holmes`), an SSH key added to
+your hcloud project, and the datasets already preprocessed locally (the raw data is 30M+ rows —
+preprocess **once**; `up` ships `data/processed/` to each box).
+
+### 1. Provision and start (`up`)
 
 ```sh
-for i in $(seq 0 7); do hcloud server delete "holmes-box-$i"; done
+uv run holmes dispatch up \
+    --boxes 8 \
+    --repo-url git@github.com:Data-Simply/holmes.git \
+    --branch main \
+    --ssh-key my-key \
+    --identity ~/.ssh/id_ed25519 \      # private key for ssh/rsync to the boxes
+    --location nbg1 \                    # EU only: nbg1 | fsn1 | hel1 (enforced)
+    --fit-seeds 0 1 2 --search-seeds 0
 ```
+
+`up` plans the shards, creates the boxes, waits for cloud-init (uv + repo + `uv sync`) on each, rsyncs
+`data/processed/` and that box's plan script, and starts the run in the background. Tail one with
+`ssh root@<ip> tail -f /opt/holmes/box.log`.
+
+To eyeball the partition before spending money, run `holmes dispatch plan` with the same flags first.
+
+### 2. Tear down (`down`)
+
+```sh
+uv run holmes dispatch down --identity ~/.ssh/id_ed25519
+```
+
+`down` rsyncs each box's `results/` back into your local `results/` (skip with `--no-fetch`), then
+deletes every `holmes-box-*` server. Results are namespaced per cell, so the fetched files merge
+without collision.
+
+## Notes
+
+- Boxes run one cell at a time (the multi-GB-model memory guard); parallelism is purely across boxes.
+- Everything is skip-if-exists guarded, so re-running `up` (or a box script) resumes rather than
+  redoing finished cells.
+- Keep the whole campaign on one instance type so a config scores identically on every box.

@@ -19,11 +19,10 @@ whole sweep idempotent and restartable.
 from __future__ import annotations
 
 import shlex
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
-
-from holmes.config import PROCESSED_DIR, RESULTS_DIR
 
 if TYPE_CHECKING:
     import argparse
@@ -31,6 +30,14 @@ if TYPE_CHECKING:
 BASELINE_STRATEGIES = ("grid", "random", "bayes")
 """The unattended baselines this planner fans out. HOLMES is excluded -- it drives an LLM session
 per cell with a different cost profile and isolation needs, orchestrated by the Makefile target."""
+
+# Repo-relative defaults (matching the Makefile's PROCESSED_DIR/RESULTS_DIR), NOT the absolute
+# PROJECT_ROOT-anchored config constants: the cell commands and remote paths must resolve both
+# locally (run from the repo root) and on a box (cwd is /opt/holmes, a fresh clone). Absolute local
+# paths would be shipped verbatim and not exist on the box.
+DEFAULT_PROCESSED_DIR = Path("data/processed")
+DEFAULT_RESULTS_DIR = Path("results")
+DEFAULT_PLAN_DIR = Path("plans")
 
 # random and bayes sweep the fit-seed x search-seed cross product; grid is deterministic given the
 # fit seed and takes no search seed. The flag name differs between the two search strategies.
@@ -112,8 +119,8 @@ def enumerate_cells(
     fit_seeds: list[int],
     search_seeds: list[int],
     *,
-    processed_dir: Path = PROCESSED_DIR,
-    results_dir: Path = RESULTS_DIR,
+    processed_dir: Path = DEFAULT_PROCESSED_DIR,
+    results_dir: Path = DEFAULT_RESULTS_DIR,
     runner: tuple[str, ...] = ("uv", "run", "holmes"),
 ) -> list[Cell]:
     """Enumerate every sweep cell for the requested strategies.
@@ -241,8 +248,8 @@ def discover_categories(processed_dir: Path) -> list[str]:
     return sorted(child.name for child in processed_dir.iterdir() if child.is_dir())
 
 
-def add_dispatch_arguments(parser: argparse.ArgumentParser) -> None:
-    """Attach the dispatcher's arguments to ``parser`` (the ``holmes dispatch`` subparser).
+def add_plan_arguments(parser: argparse.ArgumentParser) -> None:
+    """Attach the planning arguments shared by ``dispatch plan`` and ``dispatch up``.
 
     Args:
         parser: The subparser to populate.
@@ -269,9 +276,9 @@ def add_dispatch_arguments(parser: argparse.ArgumentParser) -> None:
         default=[0],
         help="Optimizer search-trajectory seeds (random/bayes; grid ignores them).",
     )
-    parser.add_argument("--processed-dir", type=Path, default=PROCESSED_DIR, help="Parent of the datasets.")
-    parser.add_argument("--results-dir", type=Path, default=RESULTS_DIR, help="Parent of the result JSON.")
-    parser.add_argument("--plan-dir", type=Path, default=Path("plans"), help="Where per-box scripts are written.")
+    parser.add_argument("--processed-dir", type=Path, default=DEFAULT_PROCESSED_DIR, help="Parent of the datasets.")
+    parser.add_argument("--results-dir", type=Path, default=DEFAULT_RESULTS_DIR, help="Parent of the result JSON.")
+    parser.add_argument("--plan-dir", type=Path, default=DEFAULT_PLAN_DIR, help="Where per-box scripts are written.")
     parser.add_argument(
         "--runner",
         default="uv run holmes",
@@ -284,17 +291,22 @@ def add_dispatch_arguments(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def run_dispatch(args: argparse.Namespace) -> None:
-    """Plan the sweep and write one runnable script per box.
+def plan_boxes(args: argparse.Namespace) -> list[list[Cell]]:
+    """Resolve the sweep into a per-box partition of the cells still needing a run.
 
     Args:
-        args: Parsed arguments from the ``dispatch`` subcommand.
+        args: Parsed planning arguments.
+
+    Returns:
+        list[list[Cell]]: One cell list per box (some may be empty if there is little work).
+
+    Raises:
+        SystemExit: If no categories are given and none are found under ``--processed-dir``.
     """
     categories = args.categories if args.categories is not None else discover_categories(args.processed_dir)
     if not categories:
         msg = f"No categories given and none found under {args.processed_dir}. Preprocess first."
         raise SystemExit(msg)
-
     cells = enumerate_cells(
         args.strategies,
         categories,
@@ -305,16 +317,70 @@ def run_dispatch(args: argparse.Namespace) -> None:
         runner=tuple(shlex.split(args.runner)),
     )
     runnable = cells if args.include_done else pending_cells(cells)
-    print(f"{len(cells)} cells total, {len(runnable)} pending across {len(categories)} categories.")
-    if not runnable:
+    return partition(runnable, args.boxes)
+
+
+def write_box_scripts(boxes: list[list[Cell]], plan_dir: Path) -> list[Path]:
+    """Write one executable ``box-<i>.sh`` per box and return their paths.
+
+    Args:
+        boxes: The per-box partition from :func:`plan_boxes`.
+        plan_dir: Directory the scripts are written to.
+
+    Returns:
+        list[Path]: The written script paths, one per box.
+    """
+    plan_dir.mkdir(parents=True, exist_ok=True)
+    paths: list[Path] = []
+    for i, box in enumerate(boxes):
+        script_path = plan_dir / f"box-{i}.sh"
+        script_path.write_text(render_box_script(box))
+        script_path.chmod(0o755)
+        paths.append(script_path)
+    return paths
+
+
+def run_plan(args: argparse.Namespace) -> None:
+    """Plan the sweep, write one runnable script per box, and optionally run it locally.
+
+    With ``--run`` the planned cells are executed on this machine, one at a time (the multi-GB-model
+    memory guard), instead of (only) writing scripts to ship elsewhere.
+
+    Args:
+        args: Parsed ``dispatch plan`` arguments.
+    """
+    boxes = plan_boxes(args)
+    total = sum(len(box) for box in boxes)
+    print(f"{total} pending cell(s) across {args.boxes} box(es).")
+    if total == 0:
         print("Nothing to dispatch; all results already exist.")
         return
 
-    boxes = partition(runnable, args.boxes)
-    args.plan_dir.mkdir(parents=True, exist_ok=True)
-    for i, box in enumerate(boxes):
-        script_path = args.plan_dir / f"box-{i}.sh"
-        script_path.write_text(render_box_script(box))
-        script_path.chmod(0o755)
-        print(f"  {script_path}: {len(box)} cell(s)")
-    print(f"Wrote {len(boxes)} box script(s) to {args.plan_dir}/. Run box-<i>.sh on box i.")
+    paths = write_box_scripts(boxes, args.plan_dir)
+    for path, box in zip(paths, boxes, strict=True):
+        print(f"  {path}: {len(box)} cell(s)")
+    print(f"Wrote {len(paths)} box script(s) to {args.plan_dir}/.")
+
+    if getattr(args, "run", False):
+        _run_locally(boxes)
+
+
+def _run_locally(boxes: list[list[Cell]]) -> None:
+    """Execute every planned cell on this machine, sequentially.
+
+    Cells run one at a time regardless of the box count: locally there is a single machine and a
+    single multi-GB model fits at a time, so a >1 box plan just runs its cells back to back.
+
+    Args:
+        boxes: The per-box partition; flattened in box-then-cell order.
+
+    Raises:
+        SystemExit: If a cell's command exits non-zero (surfacing the failing config).
+    """
+    cells = [cell for box in boxes for cell in box]
+    for i, cell in enumerate(cells, start=1):
+        print(f"[{i}/{len(cells)}] {cell.strategy} {cell.category} seed={cell.fit_seed}")
+        result = subprocess.run(cell.command, check=False)  # noqa: S603 - command is built from our own config
+        if result.returncode != 0:
+            msg = f"Cell failed ({' '.join(cell.command)}); exit {result.returncode}."
+            raise SystemExit(msg)

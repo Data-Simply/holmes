@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
 import pytest
@@ -127,11 +128,12 @@ def test_discover_categories_missing_dir_is_empty(tmp_path: Path) -> None:
 
 
 def test_dispatch_subcommand_wired_into_cli(tmp_path: Path) -> None:
-    # Exercise the real CLI path so the subparser + command dispatch stay wired together.
+    # Exercise the real CLI path so the nested `dispatch plan` subparser stays wired together.
     plan_dir = tmp_path / "plans"
     args = cli._build_parser().parse_args(
         [
             "dispatch",
+            "plan",
             "--boxes",
             "2",
             "--strategies",
@@ -151,3 +153,38 @@ def test_dispatch_subcommand_wired_into_cli(tmp_path: Path) -> None:
     cli._COMMANDS[args.command](args)
     assert (plan_dir / "box-0.sh").exists()
     assert (plan_dir / "box-1.sh").exists()
+
+
+def test_dispatch_plan_run_executes_cells_locally(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # --run shells out to each pending cell's command instead of only writing scripts.
+    calls: list[list[str]] = []
+    monkeypatch.setattr(
+        "holmes.dispatch.subprocess.run",
+        lambda command, check: calls.append(command) or SimpleNamespace(returncode=0),
+    )
+    args = cli._build_parser().parse_args(
+        [
+            "dispatch",
+            "plan",
+            "--run",
+            "--boxes",
+            "1",
+            "--strategies",
+            "grid",
+            "--categories",
+            "Books",
+            "--fit-seeds",
+            "0",
+            "1",
+            "--runner",
+            "holmes",
+            "--results-dir",
+            str(tmp_path / "results"),
+            "--plan-dir",
+            str(tmp_path / "plans"),
+        ],
+    )
+    cli._COMMANDS[args.command](args)
+    # One subprocess call per planned grid cell (2 fit seeds x 1 category).
+    assert len(calls) == 2
+    assert all(tuple(command[:2]) == ("holmes", "grid") for command in calls)

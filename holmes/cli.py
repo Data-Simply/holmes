@@ -18,7 +18,8 @@ from holmes.config import (
 )
 from holmes.data.dataset import Dataset
 from holmes.data.preprocess import AMAZON_CATEGORIES, build_dataset
-from holmes.dispatch import add_dispatch_arguments, run_dispatch
+from holmes.dispatch import add_plan_arguments, run_plan
+from holmes.fleet import add_provision_arguments, add_teardown_arguments, run_down, run_up
 from holmes.search.bayes import run_bayes
 from holmes.search.grid import run_grid
 from holmes.search.harness import evaluate_config
@@ -208,8 +209,20 @@ def _build_parser() -> argparse.ArgumentParser:
     evaluate.add_argument("--split", default="test", choices=["val", "test"], help="Held-out split to score.")
     _add_progress_arg(evaluate)
 
-    dispatch = sub.add_parser("dispatch", help="Plan a fan-out of the baselines into one script per box.")
-    add_dispatch_arguments(dispatch)
+    dispatch = sub.add_parser("dispatch", help="Plan and run the baseline fan-out across boxes.")
+    dispatch_sub = dispatch.add_subparsers(dest="dispatch_command", required=True)
+    plan = dispatch_sub.add_parser("plan", help="Write one runnable script per box (use --run to run locally).")
+    add_plan_arguments(plan)
+    plan.add_argument(
+        "--run",
+        action="store_true",
+        help="After planning, run the cells on this machine, one at a time (local serial execution).",
+    )
+    up = dispatch_sub.add_parser("up", help="Provision a fleet, ship data + scripts, and start the runs.")
+    add_plan_arguments(up)
+    add_provision_arguments(up)
+    down = dispatch_sub.add_parser("down", help="Fetch results back, then delete the fleet.")
+    add_teardown_arguments(down)
 
     return parser
 
@@ -387,6 +400,14 @@ def _cmd_eval(args: argparse.Namespace) -> None:
     print(json.dumps({"params": result["params"], "seed": result["seed"], "metrics": result["metrics"]}, indent=2))
 
 
+_DISPATCH_COMMANDS = {"plan": run_plan, "up": run_up, "down": run_down}
+
+
+def _cmd_dispatch(args: argparse.Namespace) -> None:
+    """Route a ``dispatch`` invocation to its ``plan``/``up``/``down`` handler."""
+    _DISPATCH_COMMANDS[args.dispatch_command](args)
+
+
 _COMMANDS = {
     "preprocess": _cmd_preprocess,
     "grid": _cmd_grid,
@@ -397,7 +418,7 @@ _COMMANDS = {
     "ranges": _cmd_ranges,
     "annotate": _cmd_annotate,
     "eval": _cmd_eval,
-    "dispatch": run_dispatch,
+    "dispatch": _cmd_dispatch,
 }
 
 
