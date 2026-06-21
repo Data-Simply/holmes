@@ -1,4 +1,4 @@
-"""Command-line entry point: ``holmes preprocess|grid|random|bayes|holmes-iter|heuristic|ranges|annotate|eval``."""
+"""CLI entry point: ``holmes preprocess|grid|random|bayes|holmes-iter|heuristic|ranges|annotate|eval|dispatch``."""
 
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ from holmes.config import (
 )
 from holmes.data.dataset import Dataset
 from holmes.data.preprocess import AMAZON_CATEGORIES, build_dataset
+from holmes.dispatch import add_dispatch_arguments, run_dispatch
 from holmes.search.bayes import run_bayes
 from holmes.search.grid import run_grid
 from holmes.search.harness import evaluate_config
@@ -207,6 +208,9 @@ def _build_parser() -> argparse.ArgumentParser:
     evaluate.add_argument("--split", default="test", choices=["val", "test"], help="Held-out split to score.")
     _add_progress_arg(evaluate)
 
+    dispatch = sub.add_parser("dispatch", help="Plan a fan-out of the baselines into one script per box.")
+    add_dispatch_arguments(dispatch)
+
     return parser
 
 
@@ -393,6 +397,7 @@ _COMMANDS = {
     "ranges": _cmd_ranges,
     "annotate": _cmd_annotate,
     "eval": _cmd_eval,
+    "dispatch": run_dispatch,
 }
 
 

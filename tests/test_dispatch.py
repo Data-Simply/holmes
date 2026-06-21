@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from holmes import cli
 from holmes.dispatch import (
     Cell,
     discover_categories,
@@ -123,3 +124,30 @@ def test_discover_categories_lists_sorted_subdirs(tmp_path: Path) -> None:
 
 def test_discover_categories_missing_dir_is_empty(tmp_path: Path) -> None:
     assert discover_categories(tmp_path / "nope") == []
+
+
+def test_dispatch_subcommand_wired_into_cli(tmp_path: Path) -> None:
+    # Exercise the real CLI path so the subparser + command dispatch stay wired together.
+    plan_dir = tmp_path / "plans"
+    args = cli._build_parser().parse_args(
+        [
+            "dispatch",
+            "--boxes",
+            "2",
+            "--strategies",
+            "grid",
+            "--categories",
+            "Books",
+            "Electronics",
+            "--fit-seeds",
+            "0",
+            "1",
+            "--results-dir",
+            str(tmp_path / "results"),
+            "--plan-dir",
+            str(plan_dir),
+        ],
+    )
+    cli._COMMANDS[args.command](args)
+    assert (plan_dir / "box-0.sh").exists()
+    assert (plan_dir / "box-1.sh").exists()

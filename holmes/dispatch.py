@@ -18,12 +18,15 @@ whole sweep idempotent and restartable.
 
 from __future__ import annotations
 
-import argparse
 import shlex
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from holmes.config import PROCESSED_DIR, RESULTS_DIR
+
+if TYPE_CHECKING:
+    import argparse
 
 BASELINE_STRATEGIES = ("grid", "random", "bayes")
 """The unattended baselines this planner fans out. HOLMES is excluded -- it drives an LLM session
@@ -238,9 +241,12 @@ def discover_categories(processed_dir: Path) -> list[str]:
     return sorted(child.name for child in processed_dir.iterdir() if child.is_dir())
 
 
-def _parse_args(argv: list[str] | None) -> argparse.Namespace:
-    """Parse the dispatcher's command-line arguments."""
-    parser = argparse.ArgumentParser(prog="holmes-dispatch", description=__doc__)
+def add_dispatch_arguments(parser: argparse.ArgumentParser) -> None:
+    """Attach the dispatcher's arguments to ``parser`` (the ``holmes dispatch`` subparser).
+
+    Args:
+        parser: The subparser to populate.
+    """
     parser.add_argument("--boxes", type=int, required=True, help="Number of boxes to fan out across.")
     parser.add_argument(
         "--strategies",
@@ -276,16 +282,14 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         action="store_true",
         help="Include cells whose result already exists (default: skip them).",
     )
-    return parser.parse_args(argv)
 
 
-def main(argv: list[str] | None = None) -> None:
+def run_dispatch(args: argparse.Namespace) -> None:
     """Plan the sweep and write one runnable script per box.
 
     Args:
-        argv: Command-line arguments (defaults to ``sys.argv``).
+        args: Parsed arguments from the ``dispatch`` subcommand.
     """
-    args = _parse_args(argv)
     categories = args.categories if args.categories is not None else discover_categories(args.processed_dir)
     if not categories:
         msg = f"No categories given and none found under {args.processed_dir}. Preprocess first."
@@ -314,7 +318,3 @@ def main(argv: list[str] | None = None) -> None:
         script_path.chmod(0o755)
         print(f"  {script_path}: {len(box)} cell(s)")
     print(f"Wrote {len(boxes)} box script(s) to {args.plan_dir}/. Run box-<i>.sh on box i.")
-
-
-if __name__ == "__main__":
-    main()

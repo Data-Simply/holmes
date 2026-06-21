@@ -1,0 +1,19 @@
+#cloud-config
+# Prepares a Hetzner CPX62 box to run one HOLMES baseline shard (a plans/box-<i>.sh script).
+# provision.sh substitutes ${REPO_URL} and ${BRANCH} before passing this as user-data.
+#
+# It only sets up the environment (uv + the repo + dependencies). Distributing the preprocessed
+# datasets and the box script, then running it, is a separate step -- see deploy/README.md -- so a
+# box never holds another optimizer's data and the run step stays under operator control.
+package_update: true
+packages:
+  - git
+  - build-essential
+  - curl
+runcmd:
+  # Install uv system-wide so every login shell and the runcmd below can call it.
+  - curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
+  - git clone --branch ${BRANCH} ${REPO_URL} /opt/holmes
+  # Pre-build the environment so the first fit doesn't pay the sync cost (also surfaces install
+  # failures at provision time rather than mid-sweep).
+  - cd /opt/holmes && /usr/local/bin/uv sync
