@@ -1,21 +1,28 @@
 """Cloud-fleet lifecycle for the baseline fan-out: provision, ship+run, and tear down boxes.
 
 Drives the ``holmes dispatch up`` / ``holmes dispatch down`` lifecycle around the ``dispatch`` plan.
-``up`` provisions N Hetzner CPX62 boxes (via the ``hcloud`` CLI), waits for cloud-init to finish on
-each, rsyncs the preprocessed datasets and that box's plan script over SSH, and starts the run.
-``down`` fetches results back and deletes the fleet.
+``up`` provisions N Hetzner CPX62 boxes via the ``hcloud`` Python SDK, waits for cloud-init (which
+just installs uv), rsyncs the local checkout + datasets + that box's plan script, runs ``uv sync``,
+and starts the run. ``down`` fetches results back and deletes the fleet.
 
-The command *builders* (``create_command``, ``rsync_push``, ...) are pure so the exact argv is
-testable; the orchestration functions are thin ``subprocess`` wrappers, since they touch real
-infrastructure and cannot be exercised offline.
+The Hetzner API goes through the SDK (structured objects, native action waiting), so the only
+``subprocess`` calls are ssh/rsync -- binaries with no Python-native equivalent. Shipping the local
+code (rather than cloning from GitHub) means a box runs exactly the working-tree code, with no repo
+URL, branch, or push to coordinate.
 """
 
 from __future__ import annotations
 
+import os
 import subprocess
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+from hcloud import Client
+from hcloud.images import Image
+from hcloud.locations import Location
+from hcloud.server_types import ServerType
 
 from holmes.config import PROJECT_ROOT
 from holmes.dispatch import DEFAULT_RESULTS_DIR, add_plan_arguments, plan_boxes, write_box_scripts
@@ -23,12 +30,20 @@ from holmes.dispatch import DEFAULT_RESULTS_DIR, add_plan_arguments, plan_boxes,
 if TYPE_CHECKING:
     import argparse
 
+    from hcloud.servers.domain import Server
+    from hcloud.ssh_keys import BoundSSHKey
+
 # Hetzner's European datacenters (Nuremberg, Falkenstein, Helsinki). Restricting --location to these
 # keeps the whole fleet in a European region, and on one CPU generation, by construction.
 EU_LOCATIONS = ("nbg1", "fsn1", "hel1")
 CLOUD_INIT = PROJECT_ROOT / "deploy" / "cloud-init.yaml"
 REMOTE_DIR = "/opt/holmes"
 NAME_PREFIX = "holmes-box-"
+
+# rsync excludes when shipping the local checkout as the box's code: drop the local venv, git
+# history, and generated dirs. Datasets (data/processed) are shipped separately, so all of data/
+# is excluded here.
+_CODE_EXCLUDES = (".git", ".venv", "data", "results", "plans", "__pycache__", ".pytest_cache", "*.egg-info")
 
 # Non-interactive SSH: accept a new host key (boxes are freshly created) and fail fast if unreachable
 # so the boot wait-loop can retry rather than hang.
@@ -44,53 +59,42 @@ def box_name(index: int) -> str:
     return f"{NAME_PREFIX}{index}"
 
 
-def render_user_data(repo_url: str, branch: str) -> str:
-    """Substitute the repo URL and branch into the cloud-init template.
+def _client() -> Client:
+    """Build an authenticated hcloud client from ``HCLOUD_TOKEN``.
 
-    Args:
-        repo_url: Git remote each box clones.
-        branch: Branch to clone.
-
-    Returns:
-        str: The cloud-init user-data with placeholders filled.
+    Raises:
+        SystemExit: If ``HCLOUD_TOKEN`` is not set.
     """
-    # Plain str.replace, not string.Template: cloud-init runcmd lines routinely contain shell ``$``
-    # (``$VAR``, ``$(...)``), which Template.substitute would choke on. Only our two literal
-    # ``${...}`` markers are touched.
-    return CLOUD_INIT.read_text().replace("${REPO_URL}", repo_url).replace("${BRANCH}", branch)
+    token = os.environ.get("HCLOUD_TOKEN")
+    if not token:
+        msg = "Set HCLOUD_TOKEN to your Hetzner Cloud API token (Console -> Security -> API Tokens)."
+        raise SystemExit(msg)
+    return Client(token=token, application_name="holmes-dispatch")
 
 
-def create_command(name: str, *, server_type: str, image: str, location: str, ssh_key: str) -> list[str]:
-    """Build the ``hcloud server create`` argv for one box (user-data piped on stdin via ``-``)."""
-    return [
-        "hcloud", "server", "create",
-        "--name", name,
-        "--type", server_type,
-        "--image", image,
-        "--location", location,
-        "--ssh-key", ssh_key,
-        "--user-data-from-file", "-",
-    ]  # fmt: skip
+def _server_ip(server: Server) -> str:
+    """Return a server's public IPv4, preferring the legacy attached IP, then a primary IP.
+
+    Raises:
+        RuntimeError: If the server has no public IPv4 (e.g. an IPv6-only box we can't reach).
+    """
+    public = server.public_net
+    ip = None
+    if public is not None:
+        if public.ipv4 is not None:
+            ip = public.ipv4.ip
+        elif public.primary_ipv4 is not None:
+            ip = public.primary_ipv4.ip
+    if ip is None:
+        msg = f"server {server.name!r} has no public IPv4 to ssh/rsync to."
+        raise RuntimeError(msg)
+    return ip
 
 
-def delete_command(name: str) -> list[str]:
-    """Build the ``hcloud server delete`` argv for one box."""
-    return ["hcloud", "server", "delete", name]
-
-
-def ip_command(name: str) -> list[str]:
-    """Build the ``hcloud server ip`` argv for one box."""
-    return ["hcloud", "server", "ip", name]
-
-
-def list_names_command() -> list[str]:
-    """Build the ``hcloud server list`` argv that prints one server name per line."""
-    return ["hcloud", "server", "list", "--output", "noheader", "--output", "columns=name"]
-
-
-def fleet_names(all_names: list[str], prefix: str = NAME_PREFIX) -> list[str]:
-    """Filter a list of server names down to this fleet's, sorted for deterministic teardown."""
-    return sorted(name for name in all_names if name.startswith(prefix))
+def fleet_servers(client: Client, prefix: str = NAME_PREFIX) -> list[Server]:
+    """Return this fleet's servers (name starts with ``prefix``), sorted for deterministic teardown."""
+    matched = [s for s in client.servers.get_all() if (s.name or "").startswith(prefix)]
+    return sorted(matched, key=lambda s: s.name or "")
 
 
 def _ssh_transport(identity: str | None) -> str:
@@ -111,10 +115,20 @@ def ssh_command(host: str, remote: str, *, user: str = "root", identity: str | N
 
 
 def rsync_push(
-    local_src: str, host: str, remote_dest: str, *, user: str = "root", identity: str | None = None
+    local_src: str,
+    host: str,
+    remote_dest: str,
+    *,
+    user: str = "root",
+    identity: str | None = None,
+    excludes: tuple[str, ...] = (),
 ) -> list[str]:
     """Build an rsync argv pushing ``local_src`` to ``host:remote_dest``."""
-    return ["rsync", "-az", "-e", _ssh_transport(identity), local_src, f"{user}@{host}:{remote_dest}"]
+    cmd = ["rsync", "-az"]
+    for pattern in excludes:
+        cmd += ["--exclude", pattern]
+    cmd += ["-e", _ssh_transport(identity), local_src, f"{user}@{host}:{remote_dest}"]
+    return cmd
 
 
 def rsync_pull(
@@ -125,10 +139,8 @@ def rsync_pull(
 
 
 def add_provision_arguments(parser: argparse.ArgumentParser) -> None:
-    """Attach the provisioning arguments shared by ``up`` (and the SSH knobs ``down`` reuses)."""
-    parser.add_argument("--repo-url", required=True, help="Git remote each box clones via cloud-init.")
+    """Attach the provisioning arguments for ``up`` (and the SSH knobs ``down`` reuses)."""
     parser.add_argument("--ssh-key", required=True, help="Name of an SSH key in your hcloud project.")
-    parser.add_argument("--branch", default="main", help="Branch to clone (default: main).")
     parser.add_argument(
         "--type",
         dest="server_type",
@@ -165,12 +177,6 @@ def _add_ssh_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--identity", default=None, help="Path to the SSH private key for ssh/rsync (optional).")
 
 
-def server_ip(name: str) -> str:
-    """Resolve a box's public IPv4 via ``hcloud server ip``."""
-    result = subprocess.run(ip_command(name), capture_output=True, text=True, check=True)
-    return result.stdout.strip()
-
-
 def wait_for_cloud_init(host: str, *, user: str, identity: str | None) -> None:
     """Block until cloud-init finishes on ``host``, retrying while SSH is not yet reachable.
 
@@ -203,17 +209,45 @@ def wait_for_cloud_init(host: str, *, user: str, identity: str | None) -> None:
     raise RuntimeError(msg)
 
 
-def _setup_box(name: str, script_path: Path, args: argparse.Namespace) -> None:
-    """Wait for a provisioned box, ship its data + plan script, and start the run."""
-    ip = server_ip(name)
-    print(f">>> {name} ({ip}): waiting for cloud-init")
+def _create_server(
+    client: Client, name: str, *, ssh_key: BoundSSHKey, user_data: str, args: argparse.Namespace
+) -> Server:
+    """Create one server and block until it (and its follow-up actions) are ready."""
+    response = client.servers.create(
+        name=name,
+        server_type=ServerType(name=args.server_type),
+        image=Image(name=args.image),
+        location=Location(name=args.location),
+        ssh_keys=[ssh_key],
+        user_data=user_data,
+    )
+    response.action.wait_until_finished()
+    for action in response.next_actions or []:
+        action.wait_until_finished()
+    return response.server
+
+
+def _setup_box(server: Server, script_path: Path, args: argparse.Namespace) -> None:
+    """Wait for a provisioned box, ship code + data + plan script, sync the env, and start the run."""
+    ip = _server_ip(server)
+    print(f">>> {server.name} ({ip}): waiting for cloud-init")
     wait_for_cloud_init(ip, user=args.ssh_user, identity=args.identity)
 
     processed = str(args.processed_dir)
     remote_processed = f"{REMOTE_DIR}/{processed}"
-    print(f">>> {name} ({ip}): shipping {processed}/ and {script_path.name}")
+    print(f">>> {server.name} ({ip}): shipping code, {processed}/, and {script_path.name}")
     subprocess.run(
-        ssh_command(ip, f"mkdir -p {remote_processed}", user=args.ssh_user, identity=args.identity),
+        ssh_command(ip, f"mkdir -p {remote_processed}", user=args.ssh_user, identity=args.identity), check=True
+    )
+    subprocess.run(
+        rsync_push(
+            f"{PROJECT_ROOT}/",
+            ip,
+            f"{REMOTE_DIR}/",
+            user=args.ssh_user,
+            identity=args.identity,
+            excludes=_CODE_EXCLUDES,
+        ),
         check=True,
     )
     subprocess.run(
@@ -224,7 +258,11 @@ def _setup_box(name: str, script_path: Path, args: argparse.Namespace) -> None:
         rsync_push(str(script_path), ip, f"{REMOTE_DIR}/box.sh", user=args.ssh_user, identity=args.identity),
         check=True,
     )
-    print(f">>> {name} ({ip}): starting run")
+    print(f">>> {server.name} ({ip}): uv sync")
+    subprocess.run(
+        ssh_command(ip, f"cd {REMOTE_DIR} && uv sync", user=args.ssh_user, identity=args.identity), check=True
+    )
+    print(f">>> {server.name} ({ip}): starting run")
     subprocess.run(
         ssh_command(
             ip,
@@ -237,7 +275,7 @@ def _setup_box(name: str, script_path: Path, args: argparse.Namespace) -> None:
 
 
 def run_up(args: argparse.Namespace) -> None:
-    """Provision the fleet, ship each box its data + plan script, and start the runs.
+    """Provision the fleet, ship each box its code + data + plan script, and start the runs.
 
     Args:
         args: Parsed ``dispatch up`` arguments (plan dimensions plus provisioning options).
@@ -252,25 +290,25 @@ def run_up(args: argparse.Namespace) -> None:
         print("Nothing to dispatch; all results already exist. Not provisioning.")
         return
 
-    user_data = render_user_data(args.repo_url, args.branch)
-    for name, _ in active:
-        print(f">>> creating {name} ({args.server_type}, {args.location})")
-        subprocess.run(
-            create_command(
-                name,
-                server_type=args.server_type,
-                image=args.image,
-                location=args.location,
-                ssh_key=args.ssh_key,
-            ),
-            input=user_data,
-            text=True,
-            check=True,
-        )
+    client = _client()
+    ssh_key = client.ssh_keys.get_by_name(args.ssh_key)
+    if ssh_key is None:
+        msg = f"SSH key {args.ssh_key!r} not found in the hcloud project."
+        raise SystemExit(msg)
+    user_data = CLOUD_INIT.read_text()
 
+    # Create all boxes first so they boot in parallel while we set them up one by one.
+    provisioned: list[tuple[Server, Path]] = []
     for name, script_path in active:
-        _setup_box(name, script_path, args)
-    print(f"Started {len(active)} box(es). Tail progress with: ssh {args.ssh_user}@<ip> tail -f {REMOTE_DIR}/box.log")
+        print(f">>> creating {name} ({args.server_type}, {args.location})")
+        server = _create_server(client, name, ssh_key=ssh_key, user_data=user_data, args=args)
+        provisioned.append((server, script_path))
+
+    for server, script_path in provisioned:
+        _setup_box(server, script_path, args)
+    print(
+        f"Started {len(provisioned)} box(es). Tail progress with: ssh {args.ssh_user}@<ip> tail -f {REMOTE_DIR}/box.log"
+    )
 
 
 def run_down(args: argparse.Namespace) -> None:
@@ -279,23 +317,18 @@ def run_down(args: argparse.Namespace) -> None:
     Args:
         args: Parsed ``dispatch down`` arguments.
     """
-    listing = subprocess.run(list_names_command(), capture_output=True, text=True, check=True)
-    names = fleet_names(listing.stdout.split(), args.prefix)
-    if not names:
+    client = _client()
+    servers = fleet_servers(client, args.prefix)
+    if not servers:
         print(f"No servers matching {args.prefix!r}; nothing to tear down.")
         return
 
     if not args.no_fetch:
         args.results_dir.mkdir(parents=True, exist_ok=True)
-        for name in names:
-            # Best-effort, end to end: neither an IP lookup that fails nor an empty results dir may
-            # abort teardown of the rest -- otherwise one flaky box leaves the whole fleet billing.
-            try:
-                ip = server_ip(name)
-            except subprocess.CalledProcessError:
-                print(f">>> {name}: could not resolve IP; skipping result fetch")
-                continue
-            print(f">>> {name} ({ip}): fetching results")
+        for server in servers:
+            ip = _server_ip(server)
+            print(f">>> {server.name} ({ip}): fetching results")
+            # Best-effort: a box that never wrote results shouldn't block teardown of the rest.
             subprocess.run(
                 rsync_pull(
                     ip, f"{REMOTE_DIR}/results/", f"{args.results_dir}/", user=args.ssh_user, identity=args.identity
@@ -303,10 +336,10 @@ def run_down(args: argparse.Namespace) -> None:
                 check=False,
             )
 
-    for name in names:
-        print(f">>> deleting {name}")
-        subprocess.run(delete_command(name), check=True)
-    print(f"Deleted {len(names)} box(es).")
+    for server in servers:
+        print(f">>> deleting {server.name}")
+        client.servers.delete(server)
+    print(f"Deleted {len(servers)} box(es).")
 
 
 # `dispatch plan` only needs the planning args; re-exported so the CLI can wire all three uniformly.

@@ -4,6 +4,7 @@ authors = [
     { name = "Vasilis Papastefanopoulos", email = "vas@datasimply.co" },
 ]
 dependencies = [
+    "hcloud>=2.22.0",
     "huggingface-hub>=1.17.0",
     "implicit>=0.7.3",
     "numpy>=2.4.6",
@@ -103,8 +104,8 @@ select = [
 [tool.ruff.lint.per-file-ignores]
 "__init__.py"               = [ "D104", "F401", "F403", "F405" ]
 "holmes/cli.py"             = [ "T201" ]                                                   # CLI prints to stdout by design
-"holmes/dispatch.py"        = [ "T201" ]                                                   # planner prints the plan to stdout
 "holmes/data/preprocess.py" = [ "T201" ]                                                   # progress reporting to stdout
+"holmes/dispatch.py"        = [ "T201" ]                                                   # planner prints the plan to stdout
 "holmes/fleet.py"           = [ "S404", "S603", "S607", "T201" ]                           # fleet lifecycle: shells out to hcloud/ssh/rsync, prints
 "holmes/search/*"           = [ "T201" ]                                                   # search progress to stdout
 "tests/*"                   = [ "ANN", "ARG", "D", "INP001", "PLR2004", "S101", "SLF001" ]

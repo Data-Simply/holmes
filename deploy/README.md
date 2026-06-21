@@ -43,27 +43,35 @@ honours the same skip-if-exists guard, so it resumes after an interruption.
 
 ## Run on a Hetzner fleet
 
-Prerequisites: the `hcloud` CLI authenticated (`hcloud context create holmes`), an SSH key added to
-your hcloud project, and the datasets already preprocessed locally (the raw data is 30M+ rows —
-preprocess **once**; `up` ships `data/processed/` to each box).
+The Hetzner API goes through the `hcloud` Python SDK (a project dependency — no separate CLI to
+install). Boxes run **your local working-tree code**: `up` rsyncs the checkout, so there's no repo
+URL, branch, or `git push` to coordinate.
+
+Prerequisites:
+
+- **`HCLOUD_TOKEN`** in your environment — a Hetzner Cloud API token (Console → your project →
+  Security → API Tokens, Read & Write). The SDK reads it directly; `export HCLOUD_TOKEN=...` (use
+  `read -rs HCLOUD_TOKEN` to keep it out of shell history).
+- An **SSH key in your hcloud project** (`hcloud` web console, or any Hetzner client) whose name you
+  pass as `--ssh-key`, with the matching private key available locally for `--identity`.
+- Datasets **preprocessed locally** (the raw data is 30M+ rows — preprocess **once**; `up` ships
+  `data/processed/` to each box).
 
 ### 1. Provision and start (`up`)
 
 ```sh
+export HCLOUD_TOKEN=...
 uv run holmes dispatch up \
     --boxes 8 \
-    --repo-url https://github.com/Data-Simply/holmes.git \
-    --branch main \
     --ssh-key my-key \
     --identity ~/.ssh/id_ed25519 \      # private key for ssh/rsync to the boxes
     --location nbg1 \                    # EU only: nbg1 | fsn1 | hel1 (enforced)
     --fit-seeds 0 1 2 --search-seeds 0
 ```
 
-`--repo-url` must be anonymously cloneable from a fresh box (which has no GitHub credentials), so use
-the **HTTPS** URL, not the `git@github.com:` SSH form. `up` plans the shards, creates the boxes,
-waits for cloud-init (uv + repo + `uv sync`) on each, rsyncs `data/processed/` and that box's plan
-script, and starts the run in the background. Tail one with `ssh root@<ip> tail -f /opt/holmes/box.log`.
+`up` plans the shards, creates the boxes, waits for cloud-init (which installs uv) on each, rsyncs the
+local code + `data/processed/` + that box's plan script, runs `uv sync`, and starts the run in the
+background. Tail one with `ssh root@<ip> tail -f /opt/holmes/box.log`.
 
 To eyeball the partition before spending money, run `holmes dispatch plan` with the same flags first.
 
