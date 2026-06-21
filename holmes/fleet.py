@@ -43,9 +43,10 @@ REMOTE_DIR = "/opt/holmes"
 NAME_PREFIX = "holmes-box-"
 
 # rsync excludes when shipping the local checkout as the box's code: drop the local venv, git
-# history, and generated dirs. Datasets (data/processed) are shipped separately, so all of data/
-# is excluded here.
-_CODE_EXCLUDES = (".git", ".venv", "data", "results", "plans", "__pycache__", ".pytest_cache", "*.egg-info")
+# history, and generated dirs. Datasets (data/processed) are shipped separately. The top-level dirs
+# carry a leading "/" so the pattern is anchored to the repo root -- an unanchored "data" would also
+# exclude the holmes/data PACKAGE subdir and break the import on the box.
+_CODE_EXCLUDES = ("/data", "/results", "/plans", ".git", ".venv", "__pycache__", ".pytest_cache", "*.egg-info")
 
 # Non-interactive SSH: accept a new host key (boxes are freshly created) and fail fast if unreachable
 # so the boot wait-loop can retry rather than hang.

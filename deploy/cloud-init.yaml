@@ -6,6 +6,7 @@ package_update: true
 packages:
   - curl
   - rsync
+  - libgomp1 # OpenMP runtime that implicit's ALS extension dlopens; not on a bare ubuntu-24.04 image
 runcmd:
   # Install uv system-wide so non-interactive ssh sessions (uv sync, the box script) can call it.
   - curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh

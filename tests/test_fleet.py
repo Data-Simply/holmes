@@ -79,6 +79,14 @@ def test_box_name() -> None:
     assert [fleet.box_name(i) for i in range(3)] == ["holmes-box-0", "holmes-box-1", "holmes-box-2"]
 
 
+def test_code_excludes_anchor_top_level_dirs() -> None:
+    # An unanchored "data" exclude would also drop the holmes/data PACKAGE subdir and break the
+    # import on the box; the top-level dir excludes must be anchored with a leading "/".
+    for top_level in ("data", "results", "plans"):
+        assert f"/{top_level}" in fleet._CODE_EXCLUDES
+        assert top_level not in fleet._CODE_EXCLUDES
+
+
 def test_fleet_servers_filters_by_prefix_and_sorts() -> None:
     client = _fake_client([_server("holmes-box-1", "a"), _server("web", "b"), _server("holmes-box-0", "c")])
     assert [s.name for s in fleet.fleet_servers(client)] == ["holmes-box-0", "holmes-box-1"]
