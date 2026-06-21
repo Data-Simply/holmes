@@ -27,11 +27,15 @@ class _FakeServersClient:
 
     def __init__(self, existing: list[SimpleNamespace] | None = None) -> None:
         self.created: list[str] = []
+        self.create_kwargs: list[dict] = []
         self.deleted: list[str] = []
         self._existing = existing or []
 
     def create(self, *, name, server_type, image, location, ssh_keys, user_data):
         self.created.append(name)
+        self.create_kwargs.append(
+            {"server_type": server_type.name, "image": image.name, "location": location.name, "user_data": user_data}
+        )
         # Distinct IP per box (holmes-box-N -> 203.0.113.N) so a ship-to-wrong-host bug is catchable.
         server = _server(name, f"203.0.113.{name.rsplit('-', 1)[-1]}")
         return SimpleNamespace(server=server, action=SimpleNamespace(wait_until_finished=lambda: None), next_actions=[])
@@ -123,6 +127,12 @@ def test_run_up_provisions_then_ships_code_data_script_and_starts(
     )  # fmt: skip
 
     assert client.servers.created == ["holmes-box-0", "holmes-box-1"]
+    # The provisioning contract: each box created as the requested type/image/location with cloud-init.
+    first = client.servers.create_kwargs[0]
+    assert first["server_type"] == "cpx62"
+    assert first["image"] == "ubuntu-24.04"
+    assert first["location"] == "nbg1"
+    assert "uv" in first["user_data"]  # cloud-init user-data was passed through
     rsyncs = [c for c in runs.calls if c[0] == "rsync"]
     assert len(rsyncs) == 2 * 3  # code + data + script, per box
     # Each box's script ships to that box's own host (not a shared/mixed-up one).

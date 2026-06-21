@@ -33,6 +33,8 @@ if TYPE_CHECKING:
     from hcloud.servers.domain import Server
     from hcloud.ssh_keys import BoundSSHKey
 
+    from holmes.dispatch import Cell
+
 # Hetzner's European datacenters (Nuremberg, Falkenstein, Helsinki). Restricting --location to these
 # keeps the whole fleet in a European region, and on one CPU generation, by construction.
 EU_LOCATIONS = ("nbg1", "fsn1", "hel1")
@@ -51,7 +53,7 @@ _SSH_OPTS = ("-o", "StrictHostKeyChecking=accept-new", "-o", "ConnectTimeout=10"
 _BOOT_RETRIES = 40
 _BOOT_DELAY_SECONDS = 15
 _WAIT_TIMEOUT_SECONDS = 600  # cap on one `cloud-init status --wait` so a wedged box can't hang the run
-_SSH_UNREACHABLE = 255  # ssh's own exit code when it cannot establish the connection (vs. a remote rc)
+_CLOUD_INIT_DONE = (0, 2)  # `cloud-init status --wait`: 0 = done, 2 = done but degraded (usable)
 
 
 def box_name(index: int) -> str:
@@ -205,7 +207,7 @@ def wait_for_cloud_init(host: str, *, user: str, identity: str | None) -> None:
         identity: SSH private-key path, or ``None``.
 
     Raises:
-        RuntimeError: If cloud-init reports an error, or the box never becomes ready in the budget.
+        RuntimeError: If the box never finishes cloud-init within the retry budget.
     """
     wait = ssh_command(host, "cloud-init status --wait", user=user, identity=identity)
     for _ in range(_BOOT_RETRIES):
@@ -216,15 +218,13 @@ def wait_for_cloud_init(host: str, *, user: str, identity: str | None) -> None:
         except subprocess.TimeoutExpired:
             time.sleep(_BOOT_DELAY_SECONDS)
             continue
-        if result.returncode == 0:
+        # `cloud-init status --wait` exits 0 when done and 2 when "done, but degraded" -- the box ran
+        # to completion with only recoverable warnings (e.g. an apt notice) and is usable. Any other
+        # non-zero is ssh-not-up-yet (255) or a transient error, so retry until the budget runs out.
+        if result.returncode in _CLOUD_INIT_DONE:
             return
-        if result.returncode != _SSH_UNREACHABLE:
-            # ssh connected and `cloud-init status --wait` itself reported error/degraded -- the box
-            # is broken, not still booting, so fail fast instead of spinning the full retry budget.
-            msg = f"cloud-init failed on {host} (status exit {result.returncode})."
-            raise RuntimeError(msg)
         time.sleep(_BOOT_DELAY_SECONDS)
-    msg = f"{host} did not become reachable within {_BOOT_RETRIES * _BOOT_DELAY_SECONDS}s."
+    msg = f"{host} did not finish cloud-init within {_BOOT_RETRIES * _BOOT_DELAY_SECONDS}s."
     raise RuntimeError(msg)
 
 
@@ -246,23 +246,32 @@ def _create_server(
     return response.server
 
 
-def _setup_box(server: Server, script_path: Path, args: argparse.Namespace) -> None:
-    """Wait for a provisioned box, ship code + data + plan script, sync the env, and start the run."""
+def _setup_box(server: Server, script_path: Path, categories: list[str], args: argparse.Namespace) -> None:
+    """Wait for a provisioned box, ship code + its datasets + plan script, sync the env, and start.
+
+    Only the categories this box's cells actually touch are shipped -- not the whole ``data/processed``
+    tree -- since at fleet scale a single category is multi-MB and most boxes run only a few.
+    """
     ip = _server_ip(server)
     print(f">>> {server.name} ({ip}): waiting for cloud-init")
     wait_for_cloud_init(ip, user=args.ssh_user, identity=args.identity)
 
     processed = str(args.processed_dir)
-    remote_processed = f"{REMOTE_DIR}/{processed}"
-    print(f">>> {server.name} ({ip}): shipping code, {processed}/, and {script_path.name}")
-    _ssh(ip, f"mkdir -p {remote_processed}", args)
+    print(f">>> {server.name} ({ip}): shipping code, {len(categories)} dataset(s), and {script_path.name}")
     _push(ip, f"{PROJECT_ROOT}/", f"{REMOTE_DIR}/", args, excludes=_CODE_EXCLUDES)
-    _push(ip, f"{processed}/", f"{remote_processed}/", args)
+    for category in categories:
+        _ssh(ip, f"mkdir -p {REMOTE_DIR}/{processed}/{category}", args)
+        _push(ip, f"{processed}/{category}/", f"{REMOTE_DIR}/{processed}/{category}/", args)
     _push(ip, str(script_path), f"{REMOTE_DIR}/box.sh", args)
     print(f">>> {server.name} ({ip}): uv sync")
     _ssh(ip, f"cd {REMOTE_DIR} && uv sync", args)
     print(f">>> {server.name} ({ip}): starting run")
     _ssh(ip, f"cd {REMOTE_DIR} && nohup bash box.sh > box.log 2>&1 < /dev/null &", args)
+
+
+def _box_categories(box: list[Cell]) -> list[str]:
+    """Return the sorted, de-duplicated categories a box's cells reference (its datasets to ship)."""
+    return sorted({cell.category for cell in box})
 
 
 def run_up(args: argparse.Namespace) -> None:
@@ -271,12 +280,18 @@ def run_up(args: argparse.Namespace) -> None:
     Args:
         args: Parsed ``dispatch up`` arguments (plan dimensions plus provisioning options).
     """
+    # The box runs from REMOTE_DIR with relative paths (cells use --data {processed_dir}/<cat>), so an
+    # absolute processed dir would ship to a bad remote path and bake an absent path into the box script.
+    if args.processed_dir.is_absolute():
+        msg = f"--processed-dir must be relative for fleet runs (boxes run from {REMOTE_DIR}); got {args.processed_dir}"
+        raise SystemExit(msg)
+
     boxes = plan_boxes(args)
     paths = write_box_scripts(boxes, args.plan_dir)
     # partition() always returns exactly --boxes lists, padding with empty ones when there is less
     # work than boxes. Provision only the boxes that have cells -- an empty box would be a paid
     # server running an empty script.
-    active = [(box_name(i), paths[i]) for i, box in enumerate(boxes) if box]
+    active = [(box_name(i), paths[i], _box_categories(box)) for i, box in enumerate(boxes) if box]
     if not active:
         print("Nothing to dispatch; all results already exist. Not provisioning.")
         return
@@ -288,15 +303,23 @@ def run_up(args: argparse.Namespace) -> None:
         raise SystemExit(msg)
     user_data = CLOUD_INIT.read_text()
 
-    # Create all boxes first so they boot in parallel while we set them up one by one.
-    provisioned: list[tuple[Server, Path]] = []
-    for name, script_path in active:
-        print(f">>> creating {name} ({args.server_type}, {args.location})")
-        server = _create_server(client, name, ssh_key=ssh_key, user_data=user_data, args=args)
-        provisioned.append((server, script_path))
-
-    for server, script_path in provisioned:
-        _setup_box(server, script_path, args)
+    # Create all boxes first so they boot in parallel while we set them up one by one. If anything
+    # fails partway, the created boxes are still billing -- surface them so the operator can tear down.
+    provisioned: list[tuple[Server, Path, list[str]]] = []
+    started = False
+    try:
+        for name, script_path, categories in active:
+            print(f">>> creating {name} ({args.server_type}, {args.location})")
+            server = _create_server(client, name, ssh_key=ssh_key, user_data=user_data, args=args)
+            provisioned.append((server, script_path, categories))
+        for server, script_path, categories in provisioned:
+            _setup_box(server, script_path, categories, args)
+        started = True
+    finally:
+        if not started and provisioned:
+            names = ", ".join(s.name or "?" for s, _, _ in provisioned)
+            print(f"!!! run_up did not complete; these boxes are still running: {names}")
+            print("    Run 'holmes dispatch down' to remove them.")
     print(
         f"Started {len(provisioned)} box(es). Tail progress with: ssh {args.ssh_user}@<ip> tail -f {REMOTE_DIR}/box.log"
     )
@@ -317,7 +340,13 @@ def run_down(args: argparse.Namespace) -> None:
     if not args.no_fetch:
         args.results_dir.mkdir(parents=True, exist_ok=True)
         for server in servers:
-            ip = _server_ip(server)
+            # Best-effort, end to end: a box with no resolvable IP (IPv6-only, half-created) must not
+            # abort teardown of the rest -- otherwise one flaky box leaves the whole fleet billing.
+            try:
+                ip = _server_ip(server)
+            except RuntimeError:
+                print(f">>> {server.name}: no reachable IP; skipping result fetch")
+                continue
             print(f">>> {server.name} ({ip}): fetching results")
             _pull(ip, f"{REMOTE_DIR}/results/", f"{args.results_dir}/", args)
 
