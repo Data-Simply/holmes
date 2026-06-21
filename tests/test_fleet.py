@@ -128,8 +128,8 @@ def test_run_up_provisions_then_ships_and_starts_each_active_box(
     rsyncs = [c for c in fake.calls if c[0] == "rsync"]
     starts = [c for c in fake.calls if any("nohup bash box.sh" in part for part in c)]
     assert [c[c.index("--name") + 1] for c in creates] == ["holmes-box-0", "holmes-box-1"]
-    assert len(starts) == 2  # one run started per box
-    assert len(rsyncs) == 4  # data dir + box.sh, per box
+    assert len(starts) == len(creates)  # one run started per provisioned box
+    assert len(rsyncs) == len(creates) * 2  # data dir + box.sh, per box
     # All boxes are provisioned before any are set up (create -> wait -> ship -> start).
     assert max(fake.calls.index(c) for c in creates) < min(fake.calls.index(r) for r in rsyncs)
     # Each box's script is shipped to that box's own host, not a shared/mixed-up one.
@@ -158,7 +158,7 @@ def test_run_down_fetches_results_then_deletes_only_the_fleet(tmp_path: Path, mo
 
     pulls = [c for c in fake.calls if c[0] == "rsync"]
     deletes = [c[-1] for c in fake.calls if c[:3] == ["hcloud", "server", "delete"]]
-    assert len(pulls) == 2  # results fetched from each fleet box before deletion
+    assert len(pulls) == len(deletes)  # one result fetch per box deleted
     # Only the holmes-box-* servers are deleted; the unrelated 'web' server is left alone.
     assert deletes == ["holmes-box-0", "holmes-box-1"]
     # Fetch happens before delete, so teardown never races ahead of result retrieval.
