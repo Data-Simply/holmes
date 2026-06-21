@@ -4,12 +4,20 @@ The `holmes dispatch` planner splits the `grid`/`random`/`bayes` sweep into one 
 box; this directory provisions the boxes to run them. HOLMES (the agentic loop) is **not** part of
 this flow — it stays on the `make holmes` target, which sandboxes each LLM session.
 
-## Target instance
+## Target instance: CPX62
 
-`cpx62` — 16 vCPU / ~32 GB RAM / 640 GB SSD, AMD EPYC Genoa, shared vCPU; the top of Hetzner's CPX
-line. One box runs one baseline cell at a time (a full strategy run is a multi-GB ALS model, so
-fits never overlap on a box). A uniform all-CPX62 fleet is one CPU generation, so a config scores
-identically on every box — keep the whole campaign on one type.
+| Spec | Value |
+|---|---|
+| vCPU | 16 (shared) |
+| RAM | ~31 GiB (32 GB) |
+| Disk | 640 GB SSD |
+| CPU | AMD EPYC Genoa (CPX Gen2) |
+| Price | ~€38.99/mo (~€0.24/hr) |
+| Regions (EU) | nbg1 (Nuremberg), fsn1 (Falkenstein), hel1 (Helsinki) |
+
+It's the top of Hetzner's CPX line. One box runs one baseline cell at a time (a full strategy run is
+a multi-GB ALS model, so fits never overlap on a box). A uniform all-CPX62 fleet is one CPU
+generation, so a config scores identically on every box — keep the whole campaign on one type.
 
 > **Check first:** measure peak RSS of a `factors=512` fit. If a single model exceeds ~31 GiB,
 > no CPX box holds it and you must move to the dedicated CCX line.
@@ -17,12 +25,12 @@ identically on every box — keep the whole campaign on one type.
 ## 1. Provision
 
 ```sh
-hcloud context create holmes              # one-time: authenticate the CLI
-REPO_URL=git@github.com:you/holmes.git \
-BRANCH=main \
-SSH_KEY=my-key \
-LOCATION=nbg1 \                            # EU only: nbg1 | fsn1 | hel1
-./deploy/provision.sh 8                    # 8 boxes, holmes-box-0 .. holmes-box-7
+hcloud context create holmes          # one-time: authenticate the CLI
+uv run python deploy/provision.py 8 \  # 8 boxes, holmes-box-0 .. holmes-box-7
+    --repo-url git@github.com:Data-Simply/holmes.git \
+    --branch main \
+    --ssh-key my-key \
+    --location nbg1                    # EU only: nbg1 | fsn1 | hel1 (enforced)
 ```
 
 cloud-init installs `uv`, clones the repo, and runs `uv sync` on each box.
@@ -51,6 +59,16 @@ done
 Results land at `results/<cat>/<strategy>-seed<N>...json`, namespaced per cell so shards never
 collide. Pull them back with `rsync` (or write to a shared volume). The scripts are skip-if-exists
 guarded, so re-running a box after a crash resumes rather than redoing finished cells.
+
+## Run the baselines serially on one machine
+
+No fleet needed — plan a single box and run its script. This is the replacement for the old
+`make baselines` target:
+
+```sh
+uv run holmes dispatch --boxes 1     # plans/box-0.sh with every cell
+bash plans/box-0.sh                  # runs them one at a time, skip-if-exists guarded
+```
 
 ## Teardown
 

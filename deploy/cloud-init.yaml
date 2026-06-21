@@ -1,6 +1,6 @@
 #cloud-config
 # Prepares a Hetzner CPX62 box to run one HOLMES baseline shard (a plans/box-<i>.sh script).
-# provision.sh substitutes ${REPO_URL} and ${BRANCH} before passing this as user-data.
+# provision.py substitutes ${REPO_URL} and ${BRANCH} before passing this as user-data.
 #
 # It only sets up the environment (uv + the repo + dependencies). Distributing the preprocessed
 # datasets and the box script, then running it, is a separate step -- see deploy/README.md -- so a
