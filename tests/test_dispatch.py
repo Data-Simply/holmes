@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shlex
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
@@ -111,7 +112,7 @@ def test_render_box_script_guards_and_runs_each_cell() -> None:
     assert script.startswith("#!/usr/bin/env bash\nset -euo pipefail")
     # Each cell's command and its skip-if-exists guard both appear.
     for cell in cells:
-        assert " ".join(cell.command) in script or cell.command[-1] in script
+        assert shlex.join(cell.command) in script
         assert f"[ -f {cell.out_path}" in script
     assert script.count("mkdir -p") == len(cells)
 

@@ -93,7 +93,9 @@ class _FakeRun:
         self.calls.append(list(command))
         stdout = ""
         if command[:3] == ["hcloud", "server", "ip"]:
-            stdout = "203.0.113.9"
+            # Distinct IP per box (holmes-box-N -> 203.0.113.N) so tests can catch a per-box
+            # ship-to-the-wrong-host mix-up, not just the right call counts.
+            stdout = f"203.0.113.{command[3].rsplit('-', 1)[-1]}"
         elif command[:3] == ["hcloud", "server", "list"]:
             stdout = "holmes-box-0\nholmes-box-1\nweb\n"
         return SimpleNamespace(returncode=0, stdout=stdout)
@@ -130,6 +132,10 @@ def test_run_up_provisions_then_ships_and_starts_each_active_box(
     assert len(rsyncs) == 4  # data dir + box.sh, per box
     # All boxes are provisioned before any are set up (create -> wait -> ship -> start).
     assert max(fake.calls.index(c) for c in creates) < min(fake.calls.index(r) for r in rsyncs)
+    # Each box's script is shipped to that box's own host, not a shared/mixed-up one.
+    script_pushes = {c[-2].rsplit("/", 1)[-1]: c[-1] for c in rsyncs if c[-1].endswith("/box.sh")}
+    assert script_pushes["box-0.sh"] == "root@203.0.113.0:/opt/holmes/box.sh"
+    assert script_pushes["box-1.sh"] == "root@203.0.113.1:/opt/holmes/box.sh"
 
 
 def test_run_up_skips_boxes_with_no_cells(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

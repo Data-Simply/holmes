@@ -223,10 +223,14 @@ def render_box_script(cells: list[Cell]) -> str:
         tag = f"{cell.strategy} {cell.category} seed={cell.fit_seed}"
         if cell.search_seed is not None:
             tag += f" search={cell.search_seed}"
+        # Quote the tag: category comes from filesystem/CLI input, so a name with a shell metachar
+        # ($, backtick, quote) must not expand or break the script under `set -euo pipefail`.
+        skip_msg = shlex.quote(f"skip (exists): {tag}")
+        start_msg = shlex.quote(f">>> {tag}")
         lines += [
             f"mkdir -p {parent}",
-            f'if [ -f {out} ]; then echo "skip (exists): {tag}"; else',
-            f"  echo '>>> {tag}'",
+            f"if [ -f {out} ]; then echo {skip_msg}; else",
+            f"  echo {start_msg}",
             f"  {shlex.join(cell.command)}",
             "fi",
             "",

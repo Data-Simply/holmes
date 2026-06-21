@@ -35,6 +35,8 @@ NAME_PREFIX = "holmes-box-"
 _SSH_OPTS = ("-o", "StrictHostKeyChecking=accept-new", "-o", "ConnectTimeout=10")
 _BOOT_RETRIES = 40
 _BOOT_DELAY_SECONDS = 15
+_WAIT_TIMEOUT_SECONDS = 600  # cap on one `cloud-init status --wait` so a wedged box can't hang the run
+_SSH_UNREACHABLE = 255  # ssh's own exit code when it cannot establish the connection (vs. a remote rc)
 
 
 def box_name(index: int) -> str:
@@ -178,16 +180,26 @@ def wait_for_cloud_init(host: str, *, user: str, identity: str | None) -> None:
         identity: SSH private-key path, or ``None``.
 
     Raises:
-        RuntimeError: If the box never becomes reachable / ready within the retry budget.
+        RuntimeError: If cloud-init reports an error, or the box never becomes ready in the budget.
     """
     wait = ssh_command(host, "cloud-init status --wait", user=user, identity=identity)
     for _ in range(_BOOT_RETRIES):
-        # `cloud-init status --wait` blocks until done and exits 0; ssh itself fails while the box is
-        # still booting, so a non-zero return just means "retry".
-        if subprocess.run(wait, check=False).returncode == 0:
+        try:
+            # A bounded timeout so a wedged `--wait` can't block the whole run forever; a timeout is
+            # just another "not ready yet, retry".
+            result = subprocess.run(wait, check=False, timeout=_WAIT_TIMEOUT_SECONDS)
+        except subprocess.TimeoutExpired:
+            time.sleep(_BOOT_DELAY_SECONDS)
+            continue
+        if result.returncode == 0:
             return
+        if result.returncode != _SSH_UNREACHABLE:
+            # ssh connected and `cloud-init status --wait` itself reported error/degraded -- the box
+            # is broken, not still booting, so fail fast instead of spinning the full retry budget.
+            msg = f"cloud-init failed on {host} (status exit {result.returncode})."
+            raise RuntimeError(msg)
         time.sleep(_BOOT_DELAY_SECONDS)
-    msg = f"{host} did not finish cloud-init within {_BOOT_RETRIES * _BOOT_DELAY_SECONDS}s."
+    msg = f"{host} did not become reachable within {_BOOT_RETRIES * _BOOT_DELAY_SECONDS}s."
     raise RuntimeError(msg)
 
 
@@ -276,9 +288,14 @@ def run_down(args: argparse.Namespace) -> None:
     if not args.no_fetch:
         args.results_dir.mkdir(parents=True, exist_ok=True)
         for name in names:
-            ip = server_ip(name)
+            # Best-effort, end to end: neither an IP lookup that fails nor an empty results dir may
+            # abort teardown of the rest -- otherwise one flaky box leaves the whole fleet billing.
+            try:
+                ip = server_ip(name)
+            except subprocess.CalledProcessError:
+                print(f">>> {name}: could not resolve IP; skipping result fetch")
+                continue
             print(f">>> {name} ({ip}): fetching results")
-            # Best-effort: a box that never wrote results shouldn't block teardown of the rest.
             subprocess.run(
                 rsync_pull(
                     ip, f"{REMOTE_DIR}/results/", f"{args.results_dir}/", user=args.ssh_user, identity=args.identity
