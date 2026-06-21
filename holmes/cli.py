@@ -216,7 +216,7 @@ def _build_parser() -> argparse.ArgumentParser:
     plan.add_argument(
         "--run",
         action="store_true",
-        help="After planning, run the cells on this machine, one at a time (local serial execution).",
+        help="After planning, run the jobs on this machine, one at a time (local serial execution).",
     )
     up = dispatch_sub.add_parser("up", help="Provision a fleet, ship data + scripts, and start the runs.")
     add_plan_arguments(up)

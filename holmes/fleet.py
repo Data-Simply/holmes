@@ -33,7 +33,7 @@ if TYPE_CHECKING:
     from hcloud.servers.domain import Server
     from hcloud.ssh_keys import BoundSSHKey
 
-    from holmes.dispatch import Cell
+    from holmes.dispatch import Job
 
 # Hetzner's European datacenters (Nuremberg, Falkenstein, Helsinki). Restricting --location to these
 # keeps the whole fleet in a European region, and on one CPU generation, by construction.
@@ -258,7 +258,7 @@ def _create_server(
 def _setup_box(server: Server, script_path: Path, categories: list[str], args: argparse.Namespace) -> None:
     """Wait for a provisioned box, ship code + its datasets + plan script, sync the env, and start.
 
-    Only the categories this box's cells actually touch are shipped -- not the whole ``data/processed``
+    Only the categories this box's jobs actually touch are shipped -- not the whole ``data/processed``
     tree -- since at fleet scale a single category is multi-MB and most boxes run only a few.
     """
     ip = _server_ip(server)
@@ -278,9 +278,9 @@ def _setup_box(server: Server, script_path: Path, categories: list[str], args: a
     _ssh(ip, f"cd {REMOTE_DIR} && nohup bash box.sh > box.log 2>&1 < /dev/null &", args)
 
 
-def _box_categories(box: list[Cell]) -> list[str]:
-    """Return the sorted, de-duplicated categories a box's cells reference (its datasets to ship)."""
-    return sorted({cell.category for cell in box})
+def _box_categories(box: list[Job]) -> list[str]:
+    """Return the sorted, de-duplicated categories a box's jobs reference (its datasets to ship)."""
+    return sorted({job.category for job in box})
 
 
 def run_up(args: argparse.Namespace) -> None:
@@ -289,7 +289,7 @@ def run_up(args: argparse.Namespace) -> None:
     Args:
         args: Parsed ``dispatch up`` arguments (plan dimensions plus provisioning options).
     """
-    # The box runs from REMOTE_DIR with relative paths (cells use --data {processed_dir}/<cat>), so an
+    # The box runs from REMOTE_DIR with relative paths (jobs use --data {processed_dir}/<cat>), so an
     # absolute processed dir would ship to a bad remote path and bake an absent path into the box script.
     if args.processed_dir.is_absolute():
         msg = f"--processed-dir must be relative for fleet runs (boxes run from {REMOTE_DIR}); got {args.processed_dir}"
@@ -298,7 +298,7 @@ def run_up(args: argparse.Namespace) -> None:
     boxes = plan_boxes(args)
     paths = write_box_scripts(boxes, args.plan_dir)
     # partition() always returns exactly --boxes lists, padding with empty ones when there is less
-    # work than boxes. Provision only the boxes that have cells -- an empty box would be a paid
+    # work than boxes. Provision only the boxes that have jobs -- an empty box would be a paid
     # server running an empty script.
     active = [(box_name(i), paths[i], _box_categories(box)) for i, box in enumerate(boxes) if box]
     if not active:

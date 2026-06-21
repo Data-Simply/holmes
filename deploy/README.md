@@ -1,6 +1,6 @@
 # Fanning the baselines out across Hetzner CPX62 boxes
 
-`holmes dispatch` plans the `grid`/`random`/`bayes` sweep into independent cells and runs them — on a
+`holmes dispatch` plans the `grid`/`random`/`bayes` sweep into independent jobs and runs them — on a
 fleet of cloud boxes or on your own machine. HOLMES (the agentic loop) is **not** part of this flow;
 it stays on the `make holmes` target, which sandboxes each LLM session.
 
@@ -21,7 +21,7 @@ holmes dispatch down   # fetch results back, then delete the fleet
 | Price | ~€38.99/mo (~€0.24/hr) |
 | Regions (EU) | nbg1 (Nuremberg), fsn1 (Falkenstein), hel1 (Helsinki) |
 
-It's the top of Hetzner's CPX line. One box runs one baseline cell at a time (a full strategy run is
+It's the top of Hetzner's CPX line. One box runs one baseline job at a time (a full strategy run is
 a multi-GB ALS model, so fits never overlap on a box). A uniform all-CPX62 fleet is one CPU
 generation, so a config scores identically on every box — keep the whole campaign on one type.
 
@@ -30,7 +30,7 @@ generation, so a config scores identically on every box — keep the whole campa
 
 ## Run locally (no fleet)
 
-Plan a single box and run its cells right here, one at a time — the replacement for the old
+Plan a single box and run its jobs right here, one at a time — the replacement for the old
 `make baselines` target:
 
 ```sh
@@ -82,12 +82,12 @@ uv run holmes dispatch down --identity ~/.ssh/id_ed25519
 ```
 
 `down` rsyncs each box's `results/` back into your local `results/` (skip with `--no-fetch`), then
-deletes every `holmes-box-*` server. Results are namespaced per cell, so the fetched files merge
+deletes every `holmes-box-*` server. Results are namespaced per job, so the fetched files merge
 without collision.
 
 ## Notes
 
-- Boxes run one cell at a time (the multi-GB-model memory guard); parallelism is purely across boxes.
+- Boxes run one job at a time (the multi-GB-model memory guard); parallelism is purely across boxes.
 - Everything is skip-if-exists guarded, so re-running `up` (or a box script) resumes rather than
-  redoing finished cells.
+  redoing finished jobs.
 - Keep the whole campaign on one instance type so a config scores identically on every box.

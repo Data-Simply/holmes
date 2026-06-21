@@ -2,16 +2,16 @@
 
 The Makefile runs the whole ``grid``/``random``/``bayes`` sweep on a single machine, serially
 (``.NOTPARALLEL`` -- each fit is a multi-GB ALS model). This planner takes the same sweep
-dimensions and partitions its independent *cells* -- one ``holmes <strategy>`` invocation per
+dimensions and partitions its independent *jobs* -- one ``holmes <strategy>`` invocation per
 ``(category, fit-seed[, search-seed])`` -- across N boxes, emitting a shell script each box runs.
 
-A cell is the unit of fan-out, not an individual fit: each cell is a full strategy run (its own
-``MAX_ITERATIONS`` fits, done sequentially inside the CLI). Cells are independent, so the only
-parallelism is across boxes; within a box the script runs cells one at a time, preserving the
+A job is the unit of fan-out, not an individual fit: each job is a full strategy run (its own
+``MAX_ITERATIONS`` fits, done sequentially inside the CLI). Jobs are independent, so the only
+parallelism is across boxes; within a box the script runs jobs one at a time, preserving the
 single-model-in-memory guard the Makefile enforces with ``.NOTPARALLEL``.
 
 Output paths and filenames mirror the Makefile exactly, so a box writing to a shared volume
-interoperates with ``make`` skip/resume: a cell whose result JSON already exists is skipped, both at
+interoperates with ``make`` skip/resume: a job whose result JSON already exists is skipped, both at
 plan time (dropped from the partition) and at run time (guarded in the emitted script), making the
 whole sweep idempotent and restartable.
 """
@@ -29,10 +29,10 @@ if TYPE_CHECKING:
 
 BASELINE_STRATEGIES = ("grid", "random", "bayes")
 """The unattended baselines this planner fans out. HOLMES is excluded -- it drives an LLM session
-per cell with a different cost profile and isolation needs, orchestrated by the Makefile target."""
+per job with a different cost profile and isolation needs, orchestrated by the Makefile target."""
 
 # Repo-relative defaults (matching the Makefile's PROCESSED_DIR/RESULTS_DIR), NOT the absolute
-# PROJECT_ROOT-anchored config constants: the cell commands and remote paths must resolve both
+# PROJECT_ROOT-anchored config constants: the job commands and remote paths must resolve both
 # locally (run from the repo root) and on a box (cwd is /opt/holmes, a fresh clone). Absolute local
 # paths would be shipped verbatim and not exist on the box.
 DEFAULT_PROCESSED_DIR = Path("data/processed")
@@ -45,7 +45,7 @@ _SEARCH_SEED_FLAG = {"random": "--search-seed", "bayes": "--sampler-seed"}
 
 
 @dataclass(frozen=True)
-class Cell:
+class Job:
     """One independent unit of work: a single ``holmes <strategy>`` invocation.
 
     Attributes:
@@ -53,7 +53,7 @@ class Cell:
         category: Preprocessed dataset name under ``processed_dir``.
         fit_seed: The ALS fit ``--seed`` (model init randomness).
         search_seed: The optimizer search-trajectory seed, or ``None`` for grid (which ignores it).
-        out_path: Result JSON path; its existence marks the cell complete.
+        out_path: Result JSON path; its existence marks the job complete.
         command: The full argv to execute, including the runner prefix.
     """
 
@@ -65,8 +65,8 @@ class Cell:
     command: tuple[str, ...]
 
 
-def _cell_filename(strategy: str, fit_seed: int, search_seed: int | None) -> str:
-    """Return the result filename for a cell, matching the Makefile's naming.
+def _job_filename(strategy: str, fit_seed: int, search_seed: int | None) -> str:
+    """Return the result filename for a job, matching the Makefile's naming.
 
     Args:
         strategy: The baseline strategy.
@@ -81,7 +81,7 @@ def _cell_filename(strategy: str, fit_seed: int, search_seed: int | None) -> str
     return f"{strategy}-seed{fit_seed}-search{search_seed}.json"
 
 
-def _build_cell(
+def _build_job(
     strategy: str,
     category: str,
     fit_seed: int,
@@ -90,8 +90,8 @@ def _build_cell(
     processed_dir: Path,
     results_dir: Path,
     runner: tuple[str, ...],
-) -> Cell:
-    """Construct one :class:`Cell`, including its full command line.
+) -> Job:
+    """Construct one :class:`Job`, including its full command line.
 
     Args:
         strategy: The baseline strategy.
@@ -103,17 +103,17 @@ def _build_cell(
         runner: Command prefix invoking the CLI (e.g. ``("uv", "run", "holmes")``).
 
     Returns:
-        Cell: The fully specified work unit.
+        Job: The fully specified work unit.
     """
-    out_path = results_dir / category / _cell_filename(strategy, fit_seed, search_seed)
+    out_path = results_dir / category / _job_filename(strategy, fit_seed, search_seed)
     command = [*runner, strategy, "--data", str(processed_dir / category), "--seed", str(fit_seed)]
     if search_seed is not None:
         command += [_SEARCH_SEED_FLAG[strategy], str(search_seed)]
     command += ["--out", str(out_path)]
-    return Cell(strategy, category, fit_seed, search_seed, out_path, tuple(command))
+    return Job(strategy, category, fit_seed, search_seed, out_path, tuple(command))
 
 
-def enumerate_cells(
+def enumerate_jobs(
     strategies: list[str],
     categories: list[str],
     fit_seeds: list[int],
@@ -122,10 +122,10 @@ def enumerate_cells(
     processed_dir: Path = DEFAULT_PROCESSED_DIR,
     results_dir: Path = DEFAULT_RESULTS_DIR,
     runner: tuple[str, ...] = ("uv", "run", "holmes"),
-) -> list[Cell]:
-    """Enumerate every sweep cell for the requested strategies.
+) -> list[Job]:
+    """Enumerate every sweep job for the requested strategies.
 
-    grid yields one cell per ``(category, fit_seed)``; random and bayes yield the full
+    grid yields one job per ``(category, fit_seed)``; random and bayes yield the full
     ``(category, fit_seed, search_seed)`` cross product -- the same dimensions the Makefile sweeps.
 
     Args:
@@ -138,16 +138,16 @@ def enumerate_cells(
         runner: Command prefix invoking the CLI.
 
     Returns:
-        list[Cell]: Every cell, ordered strategy-major then category, then seeds.
+        list[Job]: Every job, ordered strategy-major then category, then seeds.
     """
-    cells: list[Cell] = []
+    jobs: list[Job] = []
     for strategy in strategies:
         for category in categories:
             for fit_seed in fit_seeds:
-                # grid takes no search seed, so it collapses to a single cell per fit seed.
+                # grid takes no search seed, so it collapses to a single job per fit seed.
                 seeds: list[int | None] = list(search_seeds) if strategy in _SEARCH_SEED_FLAG else [None]
-                cells.extend(
-                    _build_cell(
+                jobs.extend(
+                    _build_job(
                         strategy,
                         category,
                         fit_seed,
@@ -158,38 +158,38 @@ def enumerate_cells(
                     )
                     for search_seed in seeds
                 )
-    return cells
+    return jobs
 
 
-def pending_cells(cells: list[Cell]) -> list[Cell]:
-    """Drop cells whose result already exists, so only outstanding work is dispatched.
+def pending_jobs(jobs: list[Job]) -> list[Job]:
+    """Drop jobs whose result already exists, so only outstanding work is dispatched.
 
     Mirrors the Makefile's skip-if-exists: a present result file is treated as complete. The emitted
     scripts re-check at run time too, so concurrent boxes and reruns never redo finished work.
 
     Args:
-        cells: Candidate cells.
+        jobs: Candidate jobs.
 
     Returns:
-        list[Cell]: The cells whose ``out_path`` does not yet exist.
+        list[Job]: The jobs whose ``out_path`` does not yet exist.
     """
-    return [cell for cell in cells if not cell.out_path.exists()]
+    return [job for job in jobs if not job.out_path.exists()]
 
 
-def partition(cells: list[Cell], n_boxes: int) -> list[list[Cell]]:
-    """Split cells across ``n_boxes`` by round-robin, balancing count within one cell.
+def partition(jobs: list[Job], n_boxes: int) -> list[list[Job]]:
+    """Split jobs across ``n_boxes`` by round-robin, balancing count within one job.
 
     Round-robin (rather than contiguous slices) interleaves strategies and categories across boxes,
-    so no single box inherits all of one expensive category. It balances *count*, not cost: cells of
+    so no single box inherits all of one expensive category. It balances *count*, not cost: jobs of
     a larger category (denser matrix) fit slower, so for very skewed catalogs sort or weight before
-    partitioning. The independence of cells makes any split correct; this one just keeps boxes even.
+    partitioning. The independence of jobs makes any split correct; this one just keeps boxes even.
 
     Args:
-        cells: Cells to distribute.
+        jobs: Jobs to distribute.
         n_boxes: Number of boxes (must be positive).
 
     Returns:
-        list[list[Cell]]: One cell list per box; box counts differ by at most one.
+        list[list[Job]]: One job list per box; box counts differ by at most one.
 
     Raises:
         ValueError: If ``n_boxes`` is not positive.
@@ -197,32 +197,32 @@ def partition(cells: list[Cell], n_boxes: int) -> list[list[Cell]]:
     if n_boxes < 1:
         msg = f"n_boxes must be >= 1, got {n_boxes}."
         raise ValueError(msg)
-    boxes: list[list[Cell]] = [[] for _ in range(n_boxes)]
-    for i, cell in enumerate(cells):
-        boxes[i % n_boxes].append(cell)
+    boxes: list[list[Job]] = [[] for _ in range(n_boxes)]
+    for i, job in enumerate(jobs):
+        boxes[i % n_boxes].append(job)
     return boxes
 
 
-def render_box_script(cells: list[Cell]) -> str:
-    """Render the shell script a single box runs: its cells, sequentially, skip-if-exists guarded.
+def render_box_script(jobs: list[Job]) -> str:
+    """Render the shell script a single box runs: its jobs, sequentially, skip-if-exists guarded.
 
     ``set -euo pipefail`` makes the box stop on the first failed fit rather than silently dropping a
-    cell. Cells run one at a time (the multi-GB-model memory guard); the run-time existence guard
+    job. Jobs run one at a time (the multi-GB-model memory guard); the run-time existence guard
     keeps the script idempotent if re-run after a partial pass.
 
     Args:
-        cells: The cells assigned to this box.
+        jobs: The jobs assigned to this box.
 
     Returns:
         str: A bash script body.
     """
-    lines = ["#!/usr/bin/env bash", "set -euo pipefail", "", f"# {len(cells)} cell(s)", ""]
-    for cell in cells:
-        out = shlex.quote(str(cell.out_path))
-        parent = shlex.quote(str(cell.out_path.parent))
-        tag = f"{cell.strategy} {cell.category} seed={cell.fit_seed}"
-        if cell.search_seed is not None:
-            tag += f" search={cell.search_seed}"
+    lines = ["#!/usr/bin/env bash", "set -euo pipefail", "", f"# {len(jobs)} job(s)", ""]
+    for job in jobs:
+        out = shlex.quote(str(job.out_path))
+        parent = shlex.quote(str(job.out_path.parent))
+        tag = f"{job.strategy} {job.category} seed={job.fit_seed}"
+        if job.search_seed is not None:
+            tag += f" search={job.search_seed}"
         # Quote the tag: category comes from filesystem/CLI input, so a name with a shell metachar
         # ($, backtick, quote) must not expand or break the script under `set -euo pipefail`.
         skip_msg = shlex.quote(f"skip (exists): {tag}")
@@ -231,7 +231,7 @@ def render_box_script(cells: list[Cell]) -> str:
             f"mkdir -p {parent}",
             f"if [ -f {out} ]; then echo {skip_msg}; else",
             f"  echo {start_msg}",
-            f"  {shlex.join(cell.command)}",
+            f"  {shlex.join(job.command)}",
             "fi",
             "",
         ]
@@ -291,18 +291,18 @@ def add_plan_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--include-done",
         action="store_true",
-        help="Include cells whose result already exists (default: skip them).",
+        help="Include jobs whose result already exists (default: skip them).",
     )
 
 
-def plan_boxes(args: argparse.Namespace) -> list[list[Cell]]:
-    """Resolve the sweep into a per-box partition of the cells still needing a run.
+def plan_boxes(args: argparse.Namespace) -> list[list[Job]]:
+    """Resolve the sweep into a per-box partition of the jobs still needing a run.
 
     Args:
         args: Parsed planning arguments.
 
     Returns:
-        list[list[Cell]]: One cell list per box (some may be empty if there is little work).
+        list[list[Job]]: One job list per box (some may be empty if there is little work).
 
     Raises:
         SystemExit: If no categories are given and none are found under ``--processed-dir``.
@@ -311,7 +311,7 @@ def plan_boxes(args: argparse.Namespace) -> list[list[Cell]]:
     if not categories:
         msg = f"No categories given and none found under {args.processed_dir}. Preprocess first."
         raise SystemExit(msg)
-    cells = enumerate_cells(
+    jobs = enumerate_jobs(
         args.strategies,
         categories,
         args.fit_seeds,
@@ -320,11 +320,11 @@ def plan_boxes(args: argparse.Namespace) -> list[list[Cell]]:
         results_dir=args.results_dir,
         runner=tuple(shlex.split(args.runner)),
     )
-    runnable = cells if args.include_done else pending_cells(cells)
+    runnable = jobs if args.include_done else pending_jobs(jobs)
     return partition(runnable, args.boxes)
 
 
-def write_box_scripts(boxes: list[list[Cell]], plan_dir: Path) -> list[Path]:
+def write_box_scripts(boxes: list[list[Job]], plan_dir: Path) -> list[Path]:
     """Write one executable ``box-<i>.sh`` per box and return their paths.
 
     Args:
@@ -347,7 +347,7 @@ def write_box_scripts(boxes: list[list[Cell]], plan_dir: Path) -> list[Path]:
 def run_plan(args: argparse.Namespace) -> None:
     """Plan the sweep, write one runnable script per box, and optionally run it locally.
 
-    With ``--run`` the planned cells are executed on this machine, one at a time (the multi-GB-model
+    With ``--run`` the planned jobs are executed on this machine, one at a time (the multi-GB-model
     memory guard), instead of (only) writing scripts to ship elsewhere.
 
     Args:
@@ -355,36 +355,36 @@ def run_plan(args: argparse.Namespace) -> None:
     """
     boxes = plan_boxes(args)
     total = sum(len(box) for box in boxes)
-    print(f"{total} pending cell(s) across {args.boxes} box(es).")
+    print(f"{total} pending job(s) across {args.boxes} box(es).")
     if total == 0:
         print("Nothing to dispatch; all results already exist.")
         return
 
     paths = write_box_scripts(boxes, args.plan_dir)
     for path, box in zip(paths, boxes, strict=True):
-        print(f"  {path}: {len(box)} cell(s)")
+        print(f"  {path}: {len(box)} job(s)")
     print(f"Wrote {len(paths)} box script(s) to {args.plan_dir}/.")
 
     if getattr(args, "run", False):
         _run_locally(boxes)
 
 
-def _run_locally(boxes: list[list[Cell]]) -> None:
-    """Execute every planned cell on this machine, sequentially.
+def _run_locally(boxes: list[list[Job]]) -> None:
+    """Execute every planned job on this machine, sequentially.
 
-    Cells run one at a time regardless of the box count: locally there is a single machine and a
-    single multi-GB model fits at a time, so a >1 box plan just runs its cells back to back.
+    Jobs run one at a time regardless of the box count: locally there is a single machine and a
+    single multi-GB model fits at a time, so a >1 box plan just runs its jobs back to back.
 
     Args:
-        boxes: The per-box partition; flattened in box-then-cell order.
+        boxes: The per-box partition; flattened in box-then-job order.
 
     Raises:
-        SystemExit: If a cell's command exits non-zero (surfacing the failing config).
+        SystemExit: If a job's command exits non-zero (surfacing the failing config).
     """
-    cells = [cell for box in boxes for cell in box]
-    for i, cell in enumerate(cells, start=1):
-        print(f"[{i}/{len(cells)}] {cell.strategy} {cell.category} seed={cell.fit_seed}")
-        result = subprocess.run(cell.command, check=False)  # noqa: S603 - command is built from our own config
+    jobs = [job for box in boxes for job in box]
+    for i, job in enumerate(jobs, start=1):
+        print(f"[{i}/{len(jobs)}] {job.strategy} {job.category} seed={job.fit_seed}")
+        result = subprocess.run(job.command, check=False)  # noqa: S603 - command is built from our own config
         if result.returncode != 0:
-            msg = f"Cell failed ({' '.join(cell.command)}); exit {result.returncode}."
+            msg = f"Job failed ({' '.join(job.command)}); exit {result.returncode}."
             raise SystemExit(msg)

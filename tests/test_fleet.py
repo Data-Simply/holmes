@@ -153,7 +153,7 @@ def test_run_up_provisions_then_ships_code_data_script_and_starts(
     assert sum("nohup bash box.sh" in part for c in runs.calls for part in c) == 2
 
 
-def test_run_up_skips_boxes_with_no_cells(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_run_up_skips_boxes_with_no_jobs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     client = _fake_client()
     _drive(
         monkeypatch,
