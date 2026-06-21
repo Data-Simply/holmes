@@ -97,21 +97,22 @@ def fleet_servers(client: Client, prefix: str = NAME_PREFIX) -> list[Server]:
     return sorted(matched, key=lambda s: s.name or "")
 
 
+def _ssh_base(identity: str | None) -> list[str]:
+    """Return the ssh argv prefix (options + optional identity) shared by ssh and rsync's transport."""
+    base = ["ssh", *_SSH_OPTS]
+    if identity is not None:
+        base += ["-i", identity]
+    return base
+
+
 def _ssh_transport(identity: str | None) -> str:
     """Return the ``-e`` transport string rsync uses to invoke ssh with our options."""
-    parts = ["ssh", *_SSH_OPTS]
-    if identity is not None:
-        parts += ["-i", identity]
-    return " ".join(parts)
+    return " ".join(_ssh_base(identity))
 
 
 def ssh_command(host: str, remote: str, *, user: str = "root", identity: str | None = None) -> list[str]:
     """Build an ssh argv running ``remote`` on ``host``."""
-    cmd = ["ssh", *_SSH_OPTS]
-    if identity is not None:
-        cmd += ["-i", identity]
-    cmd += [f"{user}@{host}", remote]
-    return cmd
+    return [*_ssh_base(identity), f"{user}@{host}", remote]
 
 
 def rsync_push(
@@ -136,6 +137,24 @@ def rsync_pull(
 ) -> list[str]:
     """Build an rsync argv pulling ``host:remote_src`` back to ``local_dest``."""
     return ["rsync", "-az", "-e", _ssh_transport(identity), f"{user}@{host}:{remote_src}", local_dest]
+
+
+def _ssh(ip: str, remote: str, args: argparse.Namespace) -> None:
+    """Run ``remote`` over ssh on ``ip`` with the run's ssh user/identity; raise on failure."""
+    subprocess.run(ssh_command(ip, remote, user=args.ssh_user, identity=args.identity), check=True)
+
+
+def _push(
+    ip: str, local_src: str, remote_dest: str, args: argparse.Namespace, *, excludes: tuple[str, ...] = ()
+) -> None:
+    """Rsync ``local_src`` up to ``ip:remote_dest``; raise on failure."""
+    pushed = rsync_push(local_src, ip, remote_dest, user=args.ssh_user, identity=args.identity, excludes=excludes)
+    subprocess.run(pushed, check=True)
+
+
+def _pull(ip: str, remote_src: str, local_dest: str, args: argparse.Namespace) -> None:
+    """Rsync ``ip:remote_src`` back to ``local_dest``, best-effort (a missing dir must not abort teardown)."""
+    subprocess.run(rsync_pull(ip, remote_src, local_dest, user=args.ssh_user, identity=args.identity), check=False)
 
 
 def add_provision_arguments(parser: argparse.ArgumentParser) -> None:
@@ -236,42 +255,14 @@ def _setup_box(server: Server, script_path: Path, args: argparse.Namespace) -> N
     processed = str(args.processed_dir)
     remote_processed = f"{REMOTE_DIR}/{processed}"
     print(f">>> {server.name} ({ip}): shipping code, {processed}/, and {script_path.name}")
-    subprocess.run(
-        ssh_command(ip, f"mkdir -p {remote_processed}", user=args.ssh_user, identity=args.identity), check=True
-    )
-    subprocess.run(
-        rsync_push(
-            f"{PROJECT_ROOT}/",
-            ip,
-            f"{REMOTE_DIR}/",
-            user=args.ssh_user,
-            identity=args.identity,
-            excludes=_CODE_EXCLUDES,
-        ),
-        check=True,
-    )
-    subprocess.run(
-        rsync_push(f"{processed}/", ip, f"{remote_processed}/", user=args.ssh_user, identity=args.identity),
-        check=True,
-    )
-    subprocess.run(
-        rsync_push(str(script_path), ip, f"{REMOTE_DIR}/box.sh", user=args.ssh_user, identity=args.identity),
-        check=True,
-    )
+    _ssh(ip, f"mkdir -p {remote_processed}", args)
+    _push(ip, f"{PROJECT_ROOT}/", f"{REMOTE_DIR}/", args, excludes=_CODE_EXCLUDES)
+    _push(ip, f"{processed}/", f"{remote_processed}/", args)
+    _push(ip, str(script_path), f"{REMOTE_DIR}/box.sh", args)
     print(f">>> {server.name} ({ip}): uv sync")
-    subprocess.run(
-        ssh_command(ip, f"cd {REMOTE_DIR} && uv sync", user=args.ssh_user, identity=args.identity), check=True
-    )
+    _ssh(ip, f"cd {REMOTE_DIR} && uv sync", args)
     print(f">>> {server.name} ({ip}): starting run")
-    subprocess.run(
-        ssh_command(
-            ip,
-            f"cd {REMOTE_DIR} && nohup bash box.sh > box.log 2>&1 < /dev/null &",
-            user=args.ssh_user,
-            identity=args.identity,
-        ),
-        check=True,
-    )
+    _ssh(ip, f"cd {REMOTE_DIR} && nohup bash box.sh > box.log 2>&1 < /dev/null &", args)
 
 
 def run_up(args: argparse.Namespace) -> None:
@@ -328,13 +319,7 @@ def run_down(args: argparse.Namespace) -> None:
         for server in servers:
             ip = _server_ip(server)
             print(f">>> {server.name} ({ip}): fetching results")
-            # Best-effort: a box that never wrote results shouldn't block teardown of the rest.
-            subprocess.run(
-                rsync_pull(
-                    ip, f"{REMOTE_DIR}/results/", f"{args.results_dir}/", user=args.ssh_user, identity=args.identity
-                ),
-                check=False,
-            )
+            _pull(ip, f"{REMOTE_DIR}/results/", f"{args.results_dir}/", args)
 
     for server in servers:
         print(f">>> deleting {server.name}")
