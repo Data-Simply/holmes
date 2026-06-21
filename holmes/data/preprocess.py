@@ -66,7 +66,6 @@ AMAZON_CATEGORIES = (
     "Subscription_Boxes",
     "Tools_and_Home_Improvement",
     "Toys_and_Games",
-    "Unknown",
     "Video_Games",
 )
 """Every Amazon Reviews 2023 category, in the HF hub's names.

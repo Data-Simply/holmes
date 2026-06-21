@@ -119,12 +119,12 @@ class TestCmdPreprocess:
         )
         args = _build_parser().parse_args(["preprocess", "--all"])
 
-        with pytest.raises(SystemExit, match="1 of 34 categories failed: Books"):
+        with pytest.raises(SystemExit, match=rf"1 of {len(AMAZON_CATEGORIES)} categories failed: Books"):
             _cmd_preprocess(args)
 
         produced = {p.name for p in tmp_path.iterdir() if p.is_dir()}
         assert "Books" not in produced  # the failing category wrote nothing
-        assert produced == set(AMAZON_CATEGORIES) - {"Books"}  # all 33 others still built
+        assert produced == set(AMAZON_CATEGORIES) - {"Books"}  # every other category still built
 
     def test_all_rejects_out(self):
         args = _build_parser().parse_args(["preprocess", "--all", "--out", "x"])
