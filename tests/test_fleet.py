@@ -117,7 +117,8 @@ def test_rsync_push_carries_excludes_and_pull_direction() -> None:
     pull = fleet.rsync_pull("203.0.113.5", "/opt/holmes/results/", "results/", user="root")
     assert pull[-2:] == ["root@203.0.113.5:/opt/holmes/results/", "results/"]
     transport = pull[pull.index("-e") + 1]
-    assert "StrictHostKeyChecking=accept-new" in transport
+    assert "StrictHostKeyChecking=no" in transport
+    assert "UserKnownHostsFile=/dev/null" in transport
 
 
 def test_run_up_provisions_then_ships_code_data_script_and_starts(

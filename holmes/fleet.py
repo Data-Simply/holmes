@@ -48,9 +48,17 @@ NAME_PREFIX = "holmes-box-"
 # exclude the holmes/data PACKAGE subdir and break the import on the box.
 _CODE_EXCLUDES = ("/data", "/results", "/plans", ".git", ".venv", "__pycache__", ".pytest_cache", "*.egg-info")
 
-# Non-interactive SSH: accept a new host key (boxes are freshly created) and fail fast if unreachable
-# so the boot wait-loop can retry rather than hang.
-_SSH_OPTS = ("-o", "StrictHostKeyChecking=accept-new", "-o", "ConnectTimeout=10")
+# Non-interactive SSH for throwaway boxes: skip host-key checking and don't persist keys. The boxes
+# are freshly created and short-lived, and Hetzner recycles IPs -- so a deleted box's key lingering in
+# the user's known_hosts would make `accept-new` reject the next box on that IP. UserKnownHostsFile
+# /dev/null also keeps the fleet from polluting ~/.ssh/known_hosts; ConnectTimeout lets the boot
+# wait-loop retry rather than hang.
+_SSH_OPTS = (
+    "-o", "StrictHostKeyChecking=no",
+    "-o", "UserKnownHostsFile=/dev/null",
+    "-o", "LogLevel=ERROR",
+    "-o", "ConnectTimeout=10",
+)  # fmt: skip
 _BOOT_RETRIES = 40
 _BOOT_DELAY_SECONDS = 15
 _WAIT_TIMEOUT_SECONDS = 600  # cap on one `cloud-init status --wait` so a wedged box can't hang the run
