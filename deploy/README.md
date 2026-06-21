@@ -4,7 +4,7 @@
 fleet of cloud boxes or on your own machine. HOLMES (the agentic loop) is **not** part of this flow;
 it stays on the `make holmes` target, which sandboxes each LLM session.
 
-```
+```sh
 holmes dispatch plan   # write one runnable script per box (add --run to run here, now)
 holmes dispatch up     # provision a fleet, ship data + scripts, start the runs
 holmes dispatch down   # fetch results back, then delete the fleet
@@ -52,7 +52,7 @@ preprocess **once**; `up` ships `data/processed/` to each box).
 ```sh
 uv run holmes dispatch up \
     --boxes 8 \
-    --repo-url git@github.com:Data-Simply/holmes.git \
+    --repo-url https://github.com/Data-Simply/holmes.git \
     --branch main \
     --ssh-key my-key \
     --identity ~/.ssh/id_ed25519 \      # private key for ssh/rsync to the boxes
@@ -60,9 +60,10 @@ uv run holmes dispatch up \
     --fit-seeds 0 1 2 --search-seeds 0
 ```
 
-`up` plans the shards, creates the boxes, waits for cloud-init (uv + repo + `uv sync`) on each, rsyncs
-`data/processed/` and that box's plan script, and starts the run in the background. Tail one with
-`ssh root@<ip> tail -f /opt/holmes/box.log`.
+`--repo-url` must be anonymously cloneable from a fresh box (which has no GitHub credentials), so use
+the **HTTPS** URL, not the `git@github.com:` SSH form. `up` plans the shards, creates the boxes,
+waits for cloud-init (uv + repo + `uv sync`) on each, rsyncs `data/processed/` and that box's plan
+script, and starts the run in the background. Tail one with `ssh root@<ip> tail -f /opt/holmes/box.log`.
 
 To eyeball the partition before spending money, run `holmes dispatch plan` with the same flags first.
 
