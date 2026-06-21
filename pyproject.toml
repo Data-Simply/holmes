@@ -103,6 +103,7 @@ select = [
 [tool.ruff.lint.per-file-ignores]
 "__init__.py"               = [ "D104", "F401", "F403", "F405" ]
 "holmes/cli.py"             = [ "T201" ]                                                   # CLI prints to stdout by design
+"holmes/dispatch.py"        = [ "T201" ]                                                   # planner prints the plan to stdout
 "holmes/data/preprocess.py" = [ "T201" ]                                                   # progress reporting to stdout
 "holmes/search/*"           = [ "T201" ]                                                   # search progress to stdout
 "tests/*"                   = [ "ANN", "ARG", "D", "INP001", "PLR2004", "S101", "SLF001" ]
