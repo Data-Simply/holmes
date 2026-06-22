@@ -269,8 +269,9 @@ def _setup_box(server: Server, script_path: Path, categories: list[str], args: a
     print(f">>> {server.name} ({ip}): shipping code, {len(categories)} dataset(s), and {script_path.name}")
     _push(ip, f"{PROJECT_ROOT}/", f"{REMOTE_DIR}/", args, excludes=_CODE_EXCLUDES)
     for category in categories:
+        # Source from PROJECT_ROOT (not cwd) to match the code push, so `up` works from any directory.
         _ssh(ip, f"mkdir -p {REMOTE_DIR}/{processed}/{category}", args)
-        _push(ip, f"{processed}/{category}/", f"{REMOTE_DIR}/{processed}/{category}/", args)
+        _push(ip, f"{PROJECT_ROOT}/{processed}/{category}/", f"{REMOTE_DIR}/{processed}/{category}/", args)
     _push(ip, str(script_path), f"{REMOTE_DIR}/box.sh", args)
     print(f">>> {server.name} ({ip}): uv sync")
     _ssh(ip, f"cd {REMOTE_DIR} && uv sync", args)

@@ -52,9 +52,9 @@ The framework can ingest any Amazon Reviews 2023 category (`preprocess --categor
 generalize, small enough to run at a sane compute budget. `preprocess --all` builds exactly these 7.
 
 **Selection criteria**, fixed *before* running any optimizer (so the choice can't be biased by
-results): stratify across **two scale tiers** (~tens-of-thousands to ~1M interactions, and ~1M to
-~10M) and **two domains** — *media* (high repeat engagement) vs. *physical goods*. The result spans
-~2.5 orders of magnitude in size and the full density range.
+results): span the **size range** — from ~10⁴ to ~10⁷ interactions (small → very large) — across
+**two domains**, *media* (e.g. CDs, Books) vs. *physical goods*. The result spans ~2.5 orders of
+magnitude in size and the full density range.
 
 | category | interactions | users | items | density | int/user | domain | scale tier |
 | --- | ---: | ---: | ---: | ---: | ---: | --- | --- |
@@ -67,8 +67,8 @@ results): stratify across **two scale tiers** (~tens-of-thousands to ~1M interac
 | Electronics | 8,260,845 | 1,145,516 | 284,008 | 0.003% | 7.2 | goods | very large |
 
 (Stats are post-preprocessing: after dedup, a 5-core filter on users and items, and the
-leave-last-out split. `int/user` = interactions per user, the repeat-engagement signal that
-separates media from goods.)
+leave-last-out split. `int/user` = interactions per user, a repeat-engagement signal that tends to
+run higher for media — clearest for CDs and Books.)
 
 Two categories are **called out as deliberate exclusions** (the tempting tiny and huge ones):
 **Gift_Cards** (123 items — top-K ranking is trivial) and **Kindle_Store** (a redundant very-large
