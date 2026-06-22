@@ -4,7 +4,7 @@ HOLMES — **H**ypothesis-driven **O**ptimization via **L**LM-guided **M**odel *
 
 HOLMES benchmarks hyperparameter optimization of an implicit-feedback **ALS recommender** on the
 Amazon Reviews 2023 dataset — any category (Books is the default; preprocess one or `--all` of them
-side by side) — comparing three strategies on the same fit budget:
+side by side) — comparing four strategies on the same fit budget:
 
 - **grid** — exhaustive grid search
 - **random** — random search (i.i.d. samples over the same space)
@@ -44,6 +44,39 @@ data being rating-shaped:
 If the goal were to *predict the rating* a user would give a book, Zhou-style explicit ALS (or
 SVD++) would be right. But for "what should we recommend?", implicit ALS with rating-weighted
 confidence is the principled choice.
+
+## Datasets
+
+The framework runs on any Amazon Reviews 2023 category (`preprocess --all` builds all 23), but the
+**reported experiments use a fixed, pre-registered subset of 7** — broad enough for the optimizer
+comparison to generalize, small enough to run at a sane compute budget.
+
+**Selection criteria**, fixed *before* running any optimizer (so the choice can't be biased by
+results): stratify across **two scale tiers** (~tens-of-thousands to ~1M interactions, and ~1M to
+~10M) and **two domains** — *media* (high repeat engagement) vs. *physical goods*. The result spans
+~2.5 orders of magnitude in size and the full density range.
+
+| category | interactions | users | items | density | int/user | domain | scale tier |
+| --- | ---: | ---: | ---: | ---: | ---: | --- | --- |
+| Arts_Crafts_and_Sewing | 25,511 | 3,338 | 3,441 | 0.222% | 7.6 | goods | small |
+| Video_Games | 406,724 | 63,413 | 19,022 | 0.034% | 6.4 | media | small–mid |
+| Baby_Products | 615,003 | 101,429 | 27,702 | 0.022% | 6.1 | goods | medium |
+| CDs_and_Vinyl | 1,019,946 | 101,986 | 74,645 | 0.013% | 10.0 | media | medium |
+| Automotive | 3,397,370 | 457,844 | 202,814 | 0.004% | 7.4 | goods | large |
+| Books | 5,903,332 | 603,422 | 395,385 | 0.002% | 9.8 | media | large |
+| Electronics | 8,260,845 | 1,145,516 | 284,008 | 0.003% | 7.2 | goods | very large |
+
+(Stats are post-preprocessing: after dedup, a 5-core filter on users and items, and the
+leave-last-out split. `int/user` = interactions per user, the repeat-engagement signal that
+separates media from goods.)
+
+Two categories are **deliberately excluded**: **Gift_Cards** (123 items — top-K ranking is trivial;
+retained only as a test fixture) and **Kindle_Store** (a redundant very-large media set already
+represented by Electronics at that scale tier).
+
+All reported results are generated on a **single instance type**, so every strategy scores each
+config on an identical objective — the comparability the benchmark enforces by construction (the
+shared `evaluate_config` and `TestComparabilityInvariants`).
 
 ## Setup
 
