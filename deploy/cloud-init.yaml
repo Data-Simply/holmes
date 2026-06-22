@@ -1,0 +1,12 @@
+#cloud-config
+# Prepares a Hetzner box to run a HOLMES baseline shard. `holmes dispatch up` then rsyncs the local
+# checkout + datasets onto the box, runs `uv sync`, and starts the run -- so this only needs to put
+# uv (and rsync, for the transfer) in place. No repo clone: the box runs the working-tree code.
+package_update: true
+packages:
+  - curl
+  - rsync
+  - libgomp1 # OpenMP runtime that implicit's ALS extension dlopens; not on a bare ubuntu-24.04 image
+runcmd:
+  # Install uv system-wide so non-interactive ssh sessions (uv sync, the box script) can call it.
+  - curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
