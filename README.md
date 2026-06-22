@@ -47,9 +47,9 @@ confidence is the principled choice.
 
 ## Datasets
 
-The framework runs on any Amazon Reviews 2023 category (`preprocess --all` builds all 23), but the
-**reported experiments use a fixed, pre-registered subset of 7** — broad enough for the optimizer
-comparison to generalize, small enough to run at a sane compute budget.
+The framework can ingest any Amazon Reviews 2023 category (`preprocess --category <name>`), but the
+**benchmark is fixed to a pre-registered subset of 7** — broad enough for the optimizer comparison to
+generalize, small enough to run at a sane compute budget. `preprocess --all` builds exactly these 7.
 
 **Selection criteria**, fixed *before* running any optimizer (so the choice can't be biased by
 results): stratify across **two scale tiers** (~tens-of-thousands to ~1M interactions, and ~1M to
@@ -70,9 +70,11 @@ results): stratify across **two scale tiers** (~tens-of-thousands to ~1M interac
 leave-last-out split. `int/user` = interactions per user, the repeat-engagement signal that
 separates media from goods.)
 
-Two categories are **deliberately excluded**: **Gift_Cards** (123 items — top-K ranking is trivial;
-retained only as a test fixture) and **Kindle_Store** (a redundant very-large media set already
-represented by Electronics at that scale tier).
+Two categories are **called out as deliberate exclusions** (the tempting tiny and huge ones):
+**Gift_Cards** (123 items — top-K ranking is trivial) and **Kindle_Store** (a redundant very-large
+media set already represented by Electronics at that scale tier). Neither is in `AMAZON_CATEGORIES`;
+either can be rebuilt on demand with `preprocess --category <name>` (e.g. Gift_Cards for a quick
+smoke test).
 
 All reported results are generated on a **single instance type**, so every strategy scores each
 config on an identical objective — the comparability the benchmark enforces by construction (the
